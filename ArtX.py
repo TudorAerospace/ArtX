@@ -4,6 +4,8 @@ from PIL import *
 from PIL import Image, ImageDraw, ImageColor, ImageTk, ImageEnhance, ImageFilter
 import os
 import random
+import time
+import shelve
 
 class App:
     def __init__(self):
@@ -119,8 +121,13 @@ class App:
         self.photo_ach_5_com = PhotoImage(file=self.path)
         self.path = self.path.replace('achievement_5_com.png', 'achievement_5_inc.png')
         self.photo_ach_5_inc = PhotoImage(file=self.path)
+        self.path = self.path.replace('achievement_5_inc.png', 'achievement_6_com.png')
+        self.photo_ach_6_com = PhotoImage(file=self.path)
+        self.path = self.path.replace('achievement_6_com.png', 'achievement_6_inc.png')
+        self.photo_ach_6_inc = PhotoImage(file=self.path)
         
         self.WIN.iconphoto(False, self.photo_icon)
+        self.start_time = time.time()
         
         self.ach_1_complete = False
         self.ach_1_complete_shown = False
@@ -132,6 +139,8 @@ class App:
         self.ach_4_complete_shown = False
         self.ach_5_complete = False
         self.ach_5_complete_shown = False
+        self.ach_6_complete = False
+        self.ach_6_complete_shown = False
 
     def paint(self, event ): #Functia care se activeaza cand dai click/drag ca sa pictezi
         if self.brush_type == "brush" or self.brush_type == "eraser":   #pentru pensula
@@ -296,10 +305,17 @@ class App:
         self.entry_suggestion.insert(0, idea)
         return
 
-    def save_image_as(self): #Salveaza imaginea ca...
-        file_path = filedialog.asksaveasfilename(title="Save Image File", defaultextension=".png", filetypes=[("Image files", "*.png *.jpg *.jpeg *.gif *.bmp *.ico")])
-        if file_path:
-            self.image.save(file_path)
+    def save_image_as(self, action): #Salveaza imaginea ca...
+        if action == 0:
+            file_path = filedialog.asksaveasfilename(title="Save Image File", defaultextension=".png", filetypes=[("Image files", "*.png *.jpg *.jpeg *.gif *.bmp *.ico")])
+            if file_path:
+                self.image.save(file_path)
+        else:
+            file_path = filedialog.asksaveasfilename(title="Save Image File", defaultextension=".png", filetypes=[("Image files", "*.png *.jpg *.jpeg *.gif *.bmp *.ico")])
+            if file_path:
+                self.image.save(file_path)
+            self.WIN.destroy()
+            self.CLS.destroy()
 
     def open_image(self):  #Dialogul pentru deschis poze
         global brightness_factor, CVS
@@ -325,7 +341,6 @@ class App:
                 try:
                     tag, x0, y0, x1, y1, shape_type, clr, clr2 = state
                 except ValueError:
-                    print("ERROR: ", state)
                     del state
                 if tag.startswith("background"):
                     self.CVS.create_rectangle(x0, y0, x1, y1, fill=clr, outline=clr, tags=tag)
@@ -347,7 +362,8 @@ class App:
                     self.CVS.create_line(x0, y0, x1, y1, fill=clr[0], tags=tag, width=clr2)
                     self.draw.line([x0, y0, x1, y1], fill=clr[1], width=clr2)
                 elif tag.startswith("filter"):
-                    self.filter(shape_type)
+                    self.image = self.image.convert("RGB")
+                    self.filter_type = None
                 elif shape_type.startswith("brush"):
                     if shape_type == "ellipse":
                         self.CVS.create_oval(x0, y0, x1, y1, fill=clr, outline=clr, tags=tag)
@@ -373,7 +389,7 @@ class App:
         elif event.state == 4 and event.keysym == 'p':
             self.pick_color()
         elif event.state == 4 and event.keysym == 's':
-            self.save_image_as()
+            self.save_image_as(0)
         elif event.state == 4 and event.keysym == 'z':
             self.revert_state()
         
@@ -491,62 +507,53 @@ class App:
         frame = Frame(self.canvas)
         self.canvas.create_window((0, 0), window=frame, anchor="nw")
 
-        self.achievement_1 = Button(frame, command=lambda: self.handle_achievements(0), image=self.photo_ach_1_inc if self.ach_1_complete == False else self.photo_ach_1_com)
-        self.achievement_1.config(width=470, height=80)
-        self.achievement_1.grid(row=0, column=0, pady=5)
+        achievements_status = [self.ach_1_complete, self.ach_2_complete,self.ach_3_complete, self.ach_4_complete, self.ach_5_complete, self.ach_6_complete]
 
-        self.achievement_2 = Button(frame, command=lambda: self.handle_achievements(0), image=self.photo_ach_2_inc if self.ach_2_complete == False else self.photo_ach_2_com)
-        self.achievement_2.config(width=470, height=80)
-        self.achievement_2.grid(row=1, column=0, pady=5)
-        
-        self.achievement_3 = Button(frame, command=lambda: self.handle_achievements(0), image=self.photo_ach_3_inc if self.ach_3_complete == False else self.photo_ach_3_com)
-        self.achievement_3.config(width=470, height=80)
-        self.achievement_3.grid(row=3, column=0, pady=5)
-        
-        self.achievement_4 = Button(frame, command=lambda: self.handle_achievements(0), image=self.photo_ach_4_inc if self.ach_4_complete == False else self.photo_ach_4_com)
-        self.achievement_4.config(width=470, height=80)
-        self.achievement_4.grid(row=4, column=0, pady=5)
+        achievements_images_inc = [self.photo_ach_1_inc, self.photo_ach_2_inc, self.photo_ach_3_inc, self.photo_ach_4_inc, self.photo_ach_5_inc, self.photo_ach_6_inc]
 
-        self.achievement_5 = Button(frame, command=lambda: self.handle_achievements(0), image=self.photo_ach_5_inc if self.ach_5_complete == False else self.photo_ach_5_com)
-        self.achievement_5.config(width=470, height=80)
-        self.achievement_5.grid(row=2, column=0, pady=5)
+        achievements_images_com = [self.photo_ach_1_com, self.photo_ach_2_com, self.photo_ach_3_com, self.photo_ach_4_com, self.photo_ach_5_com, self.photo_ach_6_com]
 
-        # Update the scroll region of the canvas
+        for i in range(0, 6):
+            image = achievements_images_com[i] if achievements_status[i] else achievements_images_inc[i]
+            button = Button(frame, command=lambda: self.handle_achievements(0), image=image)
+            button.config(width=470, height=80)
+            button.grid(row=i if i < 2 else i + 1, column=0, pady=5)
+
         frame.update_idletasks()
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-
-        # Bind mouse wheel scrolling
         self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
 
     def _on_mousewheel(self, event):
         self.canvas.yview_scroll(-1 * (event.delta // 120), "units")
 
     def handle_achievements(self, action):
+        shelf_path = os.path.join(self.artx_directory, "Assets", "achievement_progress")
 
         if action == 0:
-            with open(f"{self.artx_directory}\Assets\\achievement_progress.txt", "r") as self.achievement_progress:
-                self.ach_values = self.achievement_progress.readlines()
+            with shelve.open(shelf_path) as db:
+                self.achievements = db.get('achievements', {'ach_1': 0, 'ach_2': 0, 'ach_3': 0, 'ach_4': 0, 'ach_6': 0})
 
-            values = [int(line.strip()) for line in self.ach_values if not line.startswith("#")]
-            self.achievements = {'ach_1' : values[0], 'ach_2' : values[1], 'ach_3' : values[2], 'ach_4' : values[3]}
-            print(f"ACHIEVEMENTS: {self.achievements}")
             if self.achievements['ach_1'] >= 1:
                 self.ach_1_complete_shown = True
             if self.achievements['ach_2'] >= 100:
                 self.ach_2_complete_shown = True
-            if self.achievements['ach_3'] >= 60:
+            if self.achievements['ach_3'] >= 3600:
                 self.ach_3_complete_shown = True
             if self.achievements['ach_4'] >= 20:
                 self.ach_4_complete_shown = True
             if self.achievements['ach_2'] >= 500:
                 self.ach_5_complete_shown = True
+            if self.achievements['ach_6'] >= 1:
+                self.ach_6_complete_shown = True
+
         elif action == 1:
-            with open(f"{self.artx_directory}\Assets\\achievement_progress.txt", "w") as self.achievement_progress:
-                for key, value in self.achievements.items():
-                    comment = f"# {key} - {value}, Original Comment"
-                    self.achievement_progress.write(f"{comment}\n")
-                    self.achievement_progress.write(f"{int(value)}\n")
+            self.end_time = time.time()
+            self.achievements['ach_3'] = int(self.end_time - self.start_time)
+            with shelve.open(shelf_path) as db:
+                db['achievements'] = self.achievements
+
             self.handle_achievements(2)
+
         elif action == 2:
             if self.achievements['ach_1'] == 1:
                 self.ach_1_complete = True
@@ -556,7 +563,7 @@ class App:
                 self.ach_2_complete = True
                 self.achievement_notification(2)
                 self.ach_2_complete_shown = True
-            if self.achievements['ach_3'] > 60:
+            if self.achievements['ach_3'] > 3600:
                 self.ach_3_complete = True
                 self.achievement_notification(3)
                 self.ach_3_complete_shown = True
@@ -568,15 +575,25 @@ class App:
                 self.ach_5_complete = True
                 self.achievement_notification(5)
                 self.ach_5_complete_shown = True
+            if self.achievements['ach_6'] == 1:
+                self.ach_6_complete = True
+                self.achievement_notification(6)
+                self.ach_6_complete_shown = True
   
     def achievement_notification(self, action):
-        if action == 1 and self.ach_1_complete_shown == False or action == 2 and self.ach_2_complete_shown == False or action == 3 and self.ach_3_complete_shown == False or action == 4 and self.ach_4_complete_shown == False or action == 5 and self.ach_5_complete_shown == False:
+        achievements_complete_shown = [self.ach_1_complete_shown, self.ach_2_complete_shown, self.ach_3_complete_shown, self.ach_4_complete_shown, self.ach_5_complete_shown, self.ach_6_complete_shown]
+        if action in range(1, 7) and not achievements_complete_shown[action - 1]:
             ACH_N = Toplevel(self.WIN)
             ACH_N.title("Achievement Got!")
             ACH_N.geometry("500x100")
             ACH_N.resizable(False, False)
             ACH_N.iconphoto(False, self.photo_trophy)
-            achievement = Button(ACH_N, command=lambda: self.handle_achievements(0), image=self.photo_ach_1_com if action == 1 and self.ach_1_complete_shown == False else self.photo_ach_2_com if action == 2 and self.ach_2_complete_shown == False else self.photo_ach_3_com if action == 3 and self.ach_3_complete_shown == False else self.photo_ach_4_com if action == 4 and self.ach_4_complete_shown == False else self.photo_ach_5_com if action == 5 and self.ach_5_complete_shown == False else None)
+            achievements_complete_shown = [ self.ach_1_complete_shown, self.ach_2_complete_shown, self.ach_3_complete_shown, self.ach_4_complete_shown, self.ach_5_complete_shown, self.ach_6_complete_shown]           
+            achievements_images_com = [self.photo_ach_1_com, self.photo_ach_2_com, self.photo_ach_3_com, self.photo_ach_4_com, self.photo_ach_5_com, self.photo_ach_6_com]
+            image = None
+            if action in range(1, 7) and not achievements_complete_shown[action - 1]:
+                image = achievements_images_com[action - 1]
+            achievement = Button(ACH_N, command=lambda: self.handle_achievements(0), image=image)
             achievement.config(width=470, height=80)
             achievement.grid(row=0, column=0, pady=5, padx=15)
 
@@ -682,7 +699,7 @@ class App:
         self.menu.add_cascade(label='File', menu=file_menu)
         file_menu.add_command(label='New          Ctrl+N', command=self.new_file)
         file_menu.add_command(label='Open...      Ctrl+O', command=self.open_image)
-        file_menu.add_command(label='Save As...   Ctrl+S', command = self.save_image_as)
+        file_menu.add_command(label='Save As...   Ctrl+S', command = lambda: self.save_image_as(0))
         file_menu.add_separator()
         file_menu.add_command(label='Exit', command=self.WIN.quit)
 
@@ -723,9 +740,31 @@ class App:
         notes.place(x=10, y=400)
     
     def competition(self):
+        if self.achievements['ach_6'] == 0:
+            self.achievements['ach_6'] = 1
+            self.handle_achievements(1)
         CON = Tk()
         competition = Competition(CON)
         CON.mainloop()
+
+
+    def on_closing(self):
+        self.CLS = Tk()
+        self.CLS.title("Quit? ")
+        label = Label(self.CLS, text="Do you want to quit?")
+        label.grid(row=0, column= 1)
+        cancel = Button(self.CLS, text="Cancel", command= lambda: self.CLS.destroy())
+        cancel.grid(row=1, column=0)
+        save = Button(self.CLS, text="Save & Quit", command= lambda: self.save_image_as(1))
+        save.grid(row=1, column=1)
+        quit = Button(self.CLS, text="Quit", command= lambda: self.quit_app())
+        quit.grid(row=1, column=2)
+
+        self.handle_achievements(1)
+
+    def quit_app(self):
+            self.WIN.destroy()
+            self.CLS.destroy()      
 
 class Competition:
     def __init__(self, root):
@@ -810,7 +849,6 @@ class Competition:
         self.x1, self.y1 = 250, 250 
 
 app : App = App()
-print(app.artx_directory)
 #Eventuri
 app.CVS.bind( "<B1-Motion>", app.paint )
 app.CVS.bind( "<Button-1>", app.paint )
@@ -825,4 +863,5 @@ app.draw_menu()
 app.draw_buttons()
 app.handle_achievements(0)
 app.handle_achievements(2)
+app.WIN.protocol('WM_DELETE_WINDOW', app.on_closing)
 mainloop()

@@ -17,6 +17,8 @@ class App:
         self.WIN.resizable(False, False)
         self.WIN.config(bg="white")
 
+        self.closing: bool = False
+
         self.directories = ['ArtX', 'Assets']
         self.filename = 'rectangle.png'
         self.current_directory = os.getcwd()
@@ -31,24 +33,24 @@ class App:
         self.Colour = "#000000"
         self.Colour2 = ImageColor.getrgb("black")
 
-        self.canvas_name = "canvas"
+        self.canvas_name: str = "canvas"
         self.image_states = [("rectangle0", 2, 2, 1001, 717, "rectangle", "#ffffff", ImageColor.getrgb("white"))]
 
-        self.bkgr_clr = "#ffffff"
+        self.bkgr_clr: str = "#ffffff"
         self.image = Image.new("RGB", (1000, 720), "#ffffff")
         self.image_backup = None
         self.draw = ImageDraw.Draw(self.image)
 
-        self.brush_size = 10
-        self.brush_shape = "ellipse"
-        self.brush_type = "brush"
-        self.entry_suggestion = Entry(self.WIN, width=40)
+        self.brush_size: int = 10
+        self.brush_shape: str = "ellipse"
+        self.brush_type: str = "brush"
+        self.entry_suggestion: Entry = Entry(self.WIN, width=40)
         self.entry_suggestion.place(x=10, y=350)
 
-        self.CVS_width_default = 1000
-        self.CVS_height_default = 720
-        self.CVS_width = 1000
-        self.CVS_height = 720
+        self.CVS_width_default: int = 1000
+        self.CVS_height_default: int = 720
+        self.CVS_width: int = 1000
+        self.CVS_height: int = 720
 
         self.CVS = Canvas(self.WIN, width=1000, height=720)
         self.CVS.create_rectangle(2, 2, 1001, 717, fill="#ffffff", outline="#000000")
@@ -57,17 +59,22 @@ class App:
         self.CLR = Canvas(self.WIN, width=250, height=310)
         self.CLR.place(x=1280, y=400)
 
+        self.first_click: bool = False
+        self.first_click_2: bool = False
+
         self.menu = Menu(self.WIN)
         self.WIN.config(menu=self.menu)
         self.bs_sub_menu = Menu(self.menu, tearoff=0)
         self.sp_sub_menu = Menu(self.menu, tearoff=0)
+        self.ct_sub_menu = Menu(self.menu, tearoff=0)
 
-        self.filter_type = None
-        self.brightness_factor = 1.0
+        self.filter_type: str = None
+        self.brightness_factor: float = 1.0
 
         self.rect_num = 1
         self.ellipse_num = 0
         self.line_num = 0
+        self.triangle_num = 0
         self.bg_num = 0
         self.brush_num = 0
         self.filter_num = 0
@@ -79,11 +86,15 @@ class App:
 
         # Import images for buttons
         self.photo_rectangle = PhotoImage(file=self.path)
-        self.path = self.path.replace('rectangle.png', 'ellipse.png')
+        self.path = self.path.replace('rectangle.png', 'picker.png')
+        self.photo_picker = PhotoImage(file=self.path)
+        self.path = self.path.replace('picker.png', 'ellipse.png')
         self.photo_ellipse = PhotoImage(file=self.path)
         self.path = self.path.replace('ellipse.png', 'line.png')
         self.photo_line = PhotoImage(file=self.path)
-        self.path = self.path.replace('line.png', 'pick_clr.png')
+        self.path = self.path.replace('line.png', 'triangle.png')
+        self.photo_triangle = PhotoImage(file=self.path)
+        self.path = self.path.replace('triangle.png', 'pick_clr.png')
         self.photo_pick_clr = PhotoImage(file=self.path)
         self.path = self.path.replace('pick_clr.png', 'check.png')
         self.photo_check = PhotoImage(file=self.path)
@@ -101,7 +112,11 @@ class App:
         self.photo_icon = PhotoImage(file=self.path)
         self.path = self.path.replace('icon.png', 'trophy.png')
         self.photo_trophy = PhotoImage(file=self.path)
-        self.path = self.path.replace('trophy.png', 'achievement_1_inc.png')
+        self.path = self.path.replace('trophy.png', 'zoom_out.png')
+        self.photo_zoom_out = PhotoImage(file=self.path)
+        self.path = self.path.replace('zoom_out.png', 'zoom_in.png')
+        self.photo_zoom_in = PhotoImage(file=self.path)
+        self.path = self.path.replace('zoom_in.png', 'achievement_1_inc.png')
         self.photo_ach_1_inc = PhotoImage(file=self.path)
         self.path = self.path.replace('achievement_1_inc.png', 'achievement_1_com.png')
         self.photo_ach_1_com = PhotoImage(file=self.path)
@@ -142,60 +157,115 @@ class App:
         self.ach_6_complete = False
         self.ach_6_complete_shown = False
 
-    def paint(self, event ): #Functia care se activeaza cand dai click/drag ca sa pictezi
-        if self.brush_type == "brush" or self.brush_type == "eraser":   #pentru pensula
-            self.x0, self.y0, self.x1, self.y1 = ( event.x - self.brush_size/2 ),( event.y- self.brush_size/2), ( event.x + self.brush_size/2 ), ( event.y + self.brush_size/2 )
+    def create_mark(self, x0, y0, x1, y1):
+        self.CVS.delete("mark1")
+        self.CVS.create_line(x0, y0, x1, y1, fill="blue", tags="mark1", width=2)
+        self.CVS.create_line(x0 + 15, y0, x1 - 15, y1, fill="blue" , tags="mark1", width=2)
+        self.CVS.create_line(x0 + 7.5, y0 + 7.5, self.x2, self.y2, fill="blue" if self.brush_type != "line" else self.Colour, tags="mark1", width=2 if self.brush_type != "line" else 5, dash= (4, 20))
+        if self.brush_type != "line":
+            self.CVS.create_line(x0 + 7.5, self.y2, self.x2, y0 + 7.5, fill="blue" if self.brush_type != "line" else self.Colour, tags="mark1", width=2, dash= (4, 20))
+        if self.brush_type == "triangle":
+            self.CVS.create_line(x0 + 7.5, y0 + 7.5, self.x2 - (self.x2 - x0)//2, self.y2, fill=self.Colour, tags="mark1", width=5, dash= (4, 20))
+            self.CVS.create_line(self.x2, y0 + 7.5, self.x2 - (self.x2 - x0)//2, self.y2, fill=self.Colour, tags="mark1", width=5, dash= (4, 20))
+        self.CVS.create_line(x0 + 7.5, y0 + 7.5, x0 + 7.5, self.y2, fill="blue"  if self.brush_type != "rectangle" else self.Colour, tags="mark1", width=2 if self.brush_type != "rectangle" else 5, dash= (4, 20))
+        self.CVS.create_line(x0 + 7.5, y0 + 7.5, self.x2, y0 + 7.5, fill="blue" if self.brush_type != "rectangle" and self.brush_type != "triangle" else self.Colour, tags="mark1", width=5 if self.brush_type in ["triangle", "rectangle"] else 2, dash= (4, 20))
+        self.CVS.create_line(self.x2, y0 + 7.5, self.x2, self.y2, fill="blue" if self.brush_type != "rectangle" else self.Colour, tags="mark1", width=2 if self.brush_type != "rectangle" else 5, dash= (4, 20))
+        self.CVS.create_line(x0 + 7.5,  self.y2, self.x2, self.y2, fill="blue" if self.brush_type != "rectangle" else self.Colour, tags="mark1", width=2 if self.brush_type != "rectangle" else 5, dash= (4, 20))
+        if self.brush_type == "ellipse":
+            self.CVS.create_oval(x0 + 7.5, y0 + 7.5 , self.x2, self.y2,outline= self.Colour, tags="mark1", width=4)
+
+    def update_marks(self, x0, y0, x1, y1):
+        self.create_mark(x0, y0, x1, y1)
+        self.update_mark_id = self.CVS.after(25, self.update_marks, x0, y0, x1, y1)
+
+    def cancel_update_marks(self):
+        if hasattr(self, 'update_mark_id'):
+            self.CVS.after_cancel(self.update_mark_id)
+            self.CVS.delete("mark1")
+
+    def paint(self, event):
+        if self.brush_type == "brush" or self.brush_type == "eraser":
+            self.x0, self.y0, self.x1, self.y1 = (event.x - self.brush_size / 2), (event.y - self.brush_size / 2), (event.x + self.brush_size / 2), (event.y + self.brush_size / 2)
             if self.brush_shape == "ellipse":
-                self.CVS.create_oval( self.x0, self.y0, self.x1, self.y1, fill = self.Colour, outline= self.Colour, tags=f"brush{self.brush_num}")
+                self.CVS.create_oval(self.x0, self.y0, self.x1, self.y1, fill=self.Colour, outline=self.Colour, tags=f"brush{self.brush_num}")
                 self.draw.ellipse([self.x0, self.y0, self.x1, self.y1], fill=self.Colour2, outline=self.Colour2)
                 self.image_states.append((f"brush{self.brush_num}", self.x0, self.y0, self.x1, self.y1, "ellipse", self.Colour, self.Colour2))
                 self.x0, self.y0, self.x1, self.y1 = None, None, None, None
             elif self.brush_shape == "rectangle":
-                self.CVS.create_rectangle( self.x0, self.y0, self.x1, self.y1, fill = self.Colour, outline= self.Colour,  tags=f"brush{self.brush_num}")
+                self.CVS.create_rectangle(self.x0, self.y0, self.x1, self.y1, fill=self.Colour, outline=self.Colour, tags=f"brush{self.brush_num}")
                 self.draw.rectangle([self.x0, self.y0, self.x1, self.y1], fill=self.Colour2, outline=self.Colour2)
                 self.image_states.append((f"brush{self.brush_num}", self.x0, self.y0, self.x1, self.y1, "rectangle", self.Colour, self.Colour2))
                 self.x0, self.y0, self.x1, self.y1 = None, None, None, None
             elif self.brush_shape == "pen":
-                self.x0, self.y0, self.x1, self.y1 = ( event.x ),( event.y), ( event.x + self.brush_size ),( event.y + self.brush_size )
-                self.CVS.create_line( self.x0, self.y0, self.x1, self.y1, fill = self.Colour,  tags=f"brush{self.brush_num}", width=self.brush_size )
+                self.x0, self.y0, self.x1, self.y1 = (event.x), (event.y), (event.x + self.brush_size), (event.y + self.brush_size)
+                self.CVS.create_line(self.x0, self.y0, self.x1, self.y1, fill=self.Colour, tags=f"brush{self.brush_num}", width=self.brush_size)
                 self.draw.line([self.x0, self.y0, self.x1, self.y1], fill=self.Colour2, width=self.brush_size)
                 self.image_states.append((f"brush{self.brush_num}", self.x0, self.y0, self.x1, self.y1, "line", (self.Colour, self.Colour2), self.brush_size))
                 self.x0, self.y0, self.x1, self.y1 = None, None, None, None
-        else: #pentru forme
-            if self.x0 == None and self.y0 == None:
+        elif self.brush_type == "picker":
+            x, y = event.x, event.y
+            rgb_color = self.image.getpixel((x, y))
+            self.Colour = "#%02x%02x%02x" % rgb_color
+            self.Colour2 = ImageColor.getrgb(self.Colour)
+        else:
+            if self.x0 is None and self.y0 is None:
                 self.x0, self.y0 = event.x, event.y
+                self.update_marks(self.x0 - 7.5, self.y0 - 7.5, self.x0 + 7.5, self.y0 + 7.5)
                 self.disable_click()
                 self.CVS.after(400, self.enable_click)
-            elif self.x1 == None and self.y1 == None:
+            elif self.x1 is None and self.y1 is None:
                 self.x1, self.y1 = event.x, event.y
-                if self.brush_type == "rectangle":
-                    if self.x1 < self.x0:
-                        self.x0, self.x1 = self.x1, self.x0
-                    if self.y1 < self.y0:
-                        self.y0, self.y1 = self.y1, self.y0
-                    self.create_rectangle(self.x0, self.y0, self.x1, self.y1)
-                    self.x0,self.y0, self.x1, self.y1 = None, None, None, None
-                    self.disable_click()
-                    self.CVS.after(400, self.enable_click)
-                elif self.brush_type == "ellipse":
-                    if self.x1 < self.x0:
-                        self.x0, self.x1 = self.x1, self.x0
-                    if self.y1 < self.y0:
-                        self.y0, self.y1 = self.y1, self.y0
-                    self.create_ellipse(self.x0, self.y0, self.x1, self.y1)
-                    self.x0, self.y0, self.x1, self.y1 = None, None, None, None
-                    self.CVS.after(400, self.enable_click)
-                elif self.brush_type == "line":
-                    self.create_line(self.x0, self.y0, self.x1, self.y1)
-                    self.x0,self. y0, self.x1, self.y1 = None, None, None, None
-                    self.disable_click()
-                    self.CVS.after(400, self.enable_click)
-            self.achievements['ach_2'] += 0.5
-            self.handle_achievements(1)
+                self.cancel_update_marks()  # Stop updating marks and delete existing marks
+                try:
+                    if self.brush_type == "rectangle":
+                        if self.x1 < self.x0:
+                            self.x0, self.x1 = self.x1, self.x0
+                        if self.y1 < self.y0:
+                            self.y0, self.y1 = self.y1, self.y0
+                        self.create_rectangle(self.x0, self.y0, self.x1, self.y1)
+                        self.x0, self.y0, self.x1, self.y1 = None, None, None, None
+                        self.disable_click()
+                        self.CVS.after(400, self.enable_click)
+                    elif self.brush_type == "ellipse":
+                        if self.x1 < self.x0:
+                            self.x0, self.x1 = self.x1, self.x0
+                        if self.y1 < self.y0:
+                            self.y0, self.y1 = self.y1, self.y0
+                        self.create_ellipse(self.x0, self.y0, self.x1, self.y1)
+                        self.x0, self.y0, self.x1, self.y1 = None, None, None, None
+                        self.CVS.after(400, self.enable_click)
+                    elif self.brush_type == "line":
+                        self.create_line(self.x0, self.y0, self.x1, self.y1)
+                        self.x0, self.y0, self.x1, self.y1 = None, None, None, None
+                        self.disable_click()
+                        self.CVS.after(400, self.enable_click)
+                    elif self.brush_type == "triangle":
+                        if self.x1 < self.x0:
+                            self.x0, self.x1 = self.x1, self.x0
+                        if self.y1 > self.y0:
+                            self.y0, self.y1 = self.y1, self.y0
+                            self.create_triangle(self.x1, self.y1, self.x1 - (self.x1 - self.x0)//2, self.y0, self.x0, self.y1)
+                        else:
+                            self.create_triangle(self.x0, self.y0, self.x1 - (self.x1 - self.x0)//2, self.y1, self.x1, self.y0)
+                        self.x0, self.y0, self.x1, self.y1 = None, None, None, None
+                        self.CVS.after(400, self.enable_click)
+                    self.achievements['ach_2'] += 0.5
+                    self.handle_achievements(1)
+                except TypeError:
+                    print("ERROR")
+                    print(self.x0, self.x1, self.y0, self.y1)
+                    pass
         if self.achievements['ach_1'] == 0:
             self.achievements['ach_1'] = 1
             self.handle_achievements(1)
-    
+
+    def update_mouse_position(self, event):
+        self.x2, self.y2 = event.x, event.y
+
+    def cancel(self, event=None):
+        self.x0, self.y0 = None, None
+        self.cancel_update_marks()
+
     def create_rectangle(self, x0, y0, x1, y1):
         tag = f"rectangle{self.rect_num}"
         self.image_states.append((tag, x0, y0, x1, y1, "rectangle", self.Colour, self.Colour2))
@@ -210,13 +280,20 @@ class App:
         self.CVS.create_oval(x0, y0, x1, y1, fill=self.Colour, outline=self.Colour, tags=tag)
         self.draw.ellipse([x0, y0, x1, y1], fill=self.Colour2, outline=self.Colour2)
 
+    def create_triangle(self, x0, y0, x1, y1, x2, y2):
+        tag = f"triangle{self.triangle_num}"
+        vertices = [x0, y0, x1, y1, x2, y2]
+        self.triangle_num += 1
+        self.image_states.append((tag, vertices, None, None, None, "triangle", self.Colour, self.Colour2))
+        self.CVS.create_polygon(vertices, outline=self.Colour, fill=self.Colour, width=2, tag=tag)
+        self.draw.polygon([(x0, y0), (x1, y1), (x2, y2)], outline=self.Colour2, fill=self.Colour2)
+
     def create_line(self, x0, y0, x1, y1):
         tag = f"line{self.line_num}"
         self.image_states.append((tag, x0, y0, x1, y1, "line", (self.Colour, self.Colour2), self.brush_size))
         self.line_num += 1
         self.CVS.create_line(x0, y0, x1, y1, fill=self.Colour, tags=tag, width=self.brush_size)
         self.draw.line([x0, y0, x1, y1], fill=self.Colour2, width=self.brush_size)
-
 
     def disable_click(self):   #Functia care da disable la click si drag (pentru forme)
         self.CVS.unbind('<Button-1>')
@@ -273,11 +350,20 @@ class App:
         self.draw.rectangle([0, 0, 1001, 720], fill=self.Colour2, outline=self.Colour2)
         self.bkgr_clr = self.Colour
 
-    def new_file(self): #Acelasi lucru dar da fill cu alb (si face un canvas nou in Pillow)
-        self.CVS.config(height=self.CVS_height_default, width=self.CVS_width_default)
-        self.CVS.create_rectangle(2, 2, 1001, 717, fill = "#ffffff", outline="#000000")
-        self.image = Image.new("RGB", (1000, 720), "#ffffff")
+    def new_file(self, width, height): #Acelasi lucru dar da fill cu alb (si face un canvas nou in Pillow)
+        if width > 1000:
+            width = 1000
+        if height > 720:
+            height = 720
+        self.CVS.config(height=height, width=width)
+        self.CVS.create_rectangle(2, 2, width, height, fill = "#ffffff", outline="#000000")
+        self.image = Image.new("RGB", (width, height), "#ffffff")
         self.draw = ImageDraw.Draw(self.image)
+        self.CVS_width = width
+        self.CVS_height = height
+        self.image_states = []
+        self.NFW.destroy()
+        self.first_click_2 = False
 
     def get_idea(self): #Generator idei
         num = random.randint(0, 100)
@@ -325,7 +411,6 @@ class App:
             self.display_image(file_path)
 
     def revert_state(self):
-        global image, draw, image_states, rect_num, ellipse_num, line_num, filter_num
         if self.image_states:
 
             last_state_tag = self.image_states.pop()[0]
@@ -346,18 +431,22 @@ class App:
                     self.CVS.create_rectangle(x0, y0, x1, y1, fill=clr, outline=clr, tags=tag)
                     self.draw.rectangle([x0, y0, x1, y1], fill=clr2, outline=clr2)
                 elif tag == "image":
-                    self.draw = ImageDraw.Draw(self.image_backup)
-                    self.tk_image = ImageTk.PhotoImage(self.image_backup)
+                    self.image = self.image_backup.copy()  # Restore the backup image
+                    self.draw = ImageDraw.Draw(self.image)
+                    self.tk_image = ImageTk.PhotoImage(self.image)
                     self.CVS.config(height=self.image.height, width=self.image.width)
-                    self.CVS.delete(ALL)
                     self.CVS.create_image(0, 0, anchor=NW, image=self.tk_image)
                     self.CVS.image = self.tk_image
+                    self.CVS_width, self.CVS_height = self.image.width, self.image.height
                 elif shape_type == "rectangle":
                     self.CVS.create_rectangle(x0, y0, x1, y1, fill=clr, outline=clr, tags=tag)
                     self.draw.rectangle([x0, y0, x1, y1], fill=clr2, outline=clr2)
                 elif shape_type == "ellipse":
                     self.CVS.create_oval(x0, y0, x1, y1, fill=clr, outline=clr, tags=tag)
                     self.draw.ellipse([x0, y0, x1, y1], fill=clr2, outline=clr2)
+                elif shape_type == "triangle":
+                    self.CVS.create_polygon(x0, fill=clr, outline=clr, tags=tag)
+                    self.draw.polygon([(x0[0], x0[1]), (x0[2], x0[3]), (x0[4], x0[5])], outline=clr2, fill=clr2)
                 elif shape_type == "line":
                     self.CVS.create_line(x0, y0, x1, y1, fill=clr[0], tags=tag, width=clr2)
                     self.draw.line([x0, y0, x1, y1], fill=clr[1], width=clr2)
@@ -379,11 +468,9 @@ class App:
             self.ellipse_num = sum(1 for state in self.image_states if state[5] == "ellipse")
             self.line_num = sum(1 for state in self.image_states if state[5] == "line")
 
-
-
     def on_key_press(self, event):   #Eventuri
         if event.state == 4 and event.keysym == 'n':  # 4 -> Ctrl
-            self.new_file()
+            self.open_new_file_window()
         elif event.state == 4 and event.keysym == 'o':
             self.open_image()
         elif event.state == 4 and event.keysym == 'p':
@@ -402,9 +489,10 @@ class App:
         self.image_states = []
         loaded_image = Image.open(file_path)
         while loaded_image.width > self.CVS_width_default or loaded_image.height > self.CVS_height_default:
-            loaded_image = loaded_image.resize((loaded_image.width - loaded_image.width//10, loaded_image.height - loaded_image.height//10))
+            loaded_image = loaded_image.resize((loaded_image.width - loaded_image.width // 10, loaded_image.height - loaded_image.height // 10))
+        
         self.image = loaded_image
-        self.image_backup = self.image
+        self.image_backup = loaded_image.copy()  # Create a deep copy of the image
         self.draw = ImageDraw.Draw(self.image)
         self.tk_image = ImageTk.PhotoImage(loaded_image)
         self.CVS.config(height=self.image.height, width=self.image.width)
@@ -413,6 +501,41 @@ class App:
         self.CVS.image = self.tk_image
         self.CVS_width, self.CVS_height = self.image.width, self.image.height
         self.image_states.append(("image", None, None, None, None, None, None, None))
+
+    def handle_zoom(self, _type):
+            zoomed_image = self.image.copy()
+            if _type == 0:
+               zoomed_image = self.image.resize((zoomed_image.width - zoomed_image.width // 10, zoomed_image.height - zoomed_image.height // 10))
+               self.image = zoomed_image
+            if _type == 1:
+                if zoomed_image.width + zoomed_image.width // 10 < self.CVS_width_default and zoomed_image.height + zoomed_image.height // 10 < self.CVS_height_default:
+                    zoomed_image = self.image.resize((zoomed_image.width + zoomed_image.width // 10, zoomed_image.height + zoomed_image.height // 10))
+                    self.image = zoomed_image
+            self.image_backup = zoomed_image.copy()  # Create a deep copy of the image
+            self.draw = ImageDraw.Draw(self.image)
+            self.tk_image = ImageTk.PhotoImage(zoomed_image)
+            self.CVS.config(height=self.image.height, width=self.image.width)
+            self.CVS.delete(ALL)
+            self.CVS.create_image(0, 0, anchor=NW, image=self.tk_image)
+            self.CVS.image = self.tk_image
+            self.CVS_width, self.CVS_height = self.image.width, self.image.height
+            self.image_states.append(("image", None, None, None, None, None, None, None))
+
+    def extend_canvas(self):
+        self.CVS_height = self.CVS_height_default
+        self.CVS_width = self.CVS_width_default
+        self.CVS.config(height=self.CVS_height, width=self.CVS_width)
+
+        extended_image = Image.new('RGB', (self.CVS_width, self.CVS_height), (255, 255, 255))
+        extended_image.paste(self.image, (0, 0))
+        
+        self.image = extended_image.copy()
+        self.tk_image = ImageTk.PhotoImage(self.image)
+        self.CVS.delete(ALL)
+        self.CVS.create_image(0, 0, anchor=NW, image=self.tk_image)
+        self.CVS.image = self.tk_image
+        self.draw = ImageDraw.Draw(self.image)
+        self.image_backup = self.image.copy()
 
     def pick_size(self, x):   #Marimea pensulei
         self.brush_size = int(x)
@@ -524,7 +647,42 @@ class App:
         self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
 
     def _on_mousewheel(self, event):
-        self.canvas.yview_scroll(-1 * (event.delta // 120), "units")
+        try:
+            self.canvas.yview_scroll(-1 * (event.delta // 120), "units")
+        except:
+            pass
+
+    def open_new_file_window(self):
+        if self.first_click_2 == False:
+            self.NFW = Tk()
+            self.NFW.resizable(False, False)
+            self.NFW.title("New")
+            self.NFW.protocol('WM_DELETE_WINDOW', self.cancel_create_new)
+            label_pxl_size = Label(self.NFW, text="Pixel size:")
+            label_pxl_size.grid(column=0, row=0, pady=5)
+            label_width = Label(self.NFW, text="Width: ")
+            label_width.grid(column=0, row=1, pady=5)
+            label_width = Label(self.NFW, text="Height: ")
+            label_width.grid(column=0, row=2, pady=5)
+            spinbox_width = Spinbox(self.NFW, from_ = 1, to=1000)
+            spinbox_width.grid(column=1, row=1)
+            spinbox_height = Spinbox(self.NFW, from_ = 1, to=720)    
+            spinbox_height.grid(column=1, row=2) 
+            label_pxl_0 = Label(self.NFW, text="pixels")
+            label_pxl_0.grid(column=2, row=1)
+            label_pxl_1 = Label(self.NFW, text="pixels")
+            label_pxl_1.grid(column=2, row=2)
+            button_confirm = Button(self.NFW, text="OK", command= lambda: self.new_file(int(spinbox_width.get()), int(spinbox_height.get())))
+            button_confirm.grid(column=1, row=3)
+            button_confirm.config(width=10)
+            button_cancel = Button(self.NFW, text="Cancel", command= lambda: self.cancel_create_new())
+            button_cancel.grid(column=2, row=3)
+            button_cancel.config(width=7)
+        self.first_click_2: bool = True
+
+    def cancel_create_new(self):
+        self.NFW.destroy()
+        self.first_click_2 = False
 
     def handle_achievements(self, action):
         shelf_path = os.path.join(self.artx_directory, "Assets", "achievement_progress")
@@ -604,10 +762,10 @@ class App:
         #seteaza marimea pensulei
         spinbox_brush_size = Spinbox(self.WIN, from_= 1, to=2000, width=5, command= lambda: self.pick_size(spinbox_brush_size.get()))
         spinbox_brush_size.insert(1, 0)
-        spinbox_brush_size.place(x=2, y = 5)
+        spinbox_brush_size.place(x=2, y = 5, height=27)
         #confirma marimea 
         button_check = Button(self.WIN, image=self.photo_check)
-        button_check.place(x=50, y=5)                                                                                   #Foloseste lambda ca sa dea call la functie doar cand apesi pe buton
+        button_check.place(x=50, y=5)                                                                   #Foloseste lambda ca sa dea call la functie doar cand apesi pe buton
         button_check.config(width=28, height=20, cursor="hand2", command = lambda: self.revert_state()) #Altfel ii da call doar cand creaza butonul
         #guma
         button_eraser = Button(self.WIN, image=self.photo_eraser)
@@ -629,18 +787,34 @@ class App:
         button_ellipse = Button(self.WIN, image = self.photo_ellipse, compound = LEFT)
         button_ellipse.place(x=90, y=35)
         button_ellipse.config(width=73, height=36, cursor="hand2", command = lambda: self.set_type("ellipse"))
+        #triangle
+        button_triangle = Button(self.WIN, image = self.photo_triangle, compound = LEFT)
+        button_triangle.place(x=175, y=35)
+        button_triangle.config(width=73, height=36, cursor="hand2", command = lambda: self.set_type("triangle"))
         #linie
-        button_ellipse = Button(self.WIN, image = self.photo_line, compound = LEFT)
-        button_ellipse.place(x=175, y=35)
-        button_ellipse.config(width=73, height=36, cursor="hand2", command = lambda: self.set_type("line"))
+        button_line = Button(self.WIN, image = self.photo_line, compound = LEFT)
+        button_line.place(x=175, y=85)
+        button_line.config(width=73, height=14, cursor="hand2", command = lambda: self.set_type("line"))
         #darken
         button_darken = Button(self.WIN, image = self.photo_darken, compound = LEFT)
         button_darken.place(x=5, y=85)
-        button_darken.config(width=115, height=36, cursor="hand2", command = lambda: self.brightness(0))
+        button_darken.config(width=73, height=36, cursor="hand2", command = lambda: self.brightness(0))
         #lighten
         button_lighten = Button(self.WIN, image = self.photo_lighten, compound = LEFT)
-        button_lighten.place(x=133, y=85)
-        button_lighten.config(width=115, height=36, cursor="hand2", command = lambda: self.brightness(1))
+        button_lighten.place(x=90, y=85)
+        button_lighten.config(width=73, height=36, cursor="hand2", command = lambda: self.brightness(1))
+        #pick
+        button_picker = Button(self.WIN, image = self.photo_picker, compound = LEFT)
+        button_picker.place(x=175, y=107)
+        button_picker.config(width=73, height=14, cursor="hand2", command = lambda: self.set_type("picker"))
+        #zoom out
+        button_zoom_out = Button(self.WIN, image = self.photo_zoom_out, compound = LEFT)
+        button_zoom_out .place(x=5, y=135)
+        button_zoom_out .config(width=73, height=36, cursor="hand2", command = lambda: self.handle_zoom(0))
+        #zoom in
+        button_zoom_in = Button(self.WIN, image = self.photo_zoom_in, compound = LEFT)
+        button_zoom_in.place(x=90, y=135)
+        button_zoom_in.config(width=73, height=36, cursor="hand2", command = lambda: self.handle_zoom(1))
 
         #butoane dreapta
         #clr/bgr
@@ -697,7 +871,7 @@ class App:
         tool_menu: Menu = Menu(self.menu)
         filter_menu: Menu = Menu(self.menu)
         self.menu.add_cascade(label='File', menu=file_menu)
-        file_menu.add_command(label='New          Ctrl+N', command=self.new_file)
+        file_menu.add_command(label='New          Ctrl+N', command=self.open_new_file_window)
         file_menu.add_command(label='Open...      Ctrl+O', command=self.open_image)
         file_menu.add_command(label='Save As...   Ctrl+S', command = lambda: self.save_image_as(0))
         file_menu.add_separator()
@@ -709,10 +883,14 @@ class App:
         self.bs_sub_menu.add_command(label='Rectangle', command= lambda: self.pick_shape("rectangle"))
         self.bs_sub_menu.add_command(label='Pen', command= lambda: self.pick_shape("pen"))
 
+        
         tool_menu.add_cascade(label="Shapes", menu=self.sp_sub_menu)
         self.sp_sub_menu.add_command(label='Rectangle', command = lambda: self.set_type("rectangle"))
         self.sp_sub_menu.add_command(label='Ellipse', command = lambda: self.set_type("ellipse"))
         self.sp_sub_menu.add_command(label='Line', command = lambda: self.set_type("line"))
+
+        tool_menu.add_cascade(label='Canvas Tools', menu=self.ct_sub_menu)
+        self.ct_sub_menu.add_command(label='Extend Canvas', command= self.extend_canvas)
 
         self.menu.add_cascade(label='Filters', menu=filter_menu)
         filter_menu.add_command(label='Grayscale', command= lambda: self.filter("grs"))
@@ -744,27 +922,39 @@ class App:
             self.achievements['ach_6'] = 1
             self.handle_achievements(1)
         CON = Tk()
+        CON.resizable(False, False)
         competition = Competition(CON)
         CON.mainloop()
 
-
     def on_closing(self):
-        self.CLS = Tk()
-        self.CLS.title("Quit? ")
-        label = Label(self.CLS, text="Do you want to quit?")
-        label.grid(row=0, column= 1)
-        cancel = Button(self.CLS, text="Cancel", command= lambda: self.CLS.destroy())
-        cancel.grid(row=1, column=0)
-        save = Button(self.CLS, text="Save & Quit", command= lambda: self.save_image_as(1))
-        save.grid(row=1, column=1)
-        quit = Button(self.CLS, text="Quit", command= lambda: self.quit_app())
-        quit.grid(row=1, column=2)
+        if self.closing == False:
+            self.CLS = Tk()
+            self.CLS.resizable(False, False)
+            self.CLS.title("Quit? ")
+            label = Label(self.CLS, text="Do you want to quit?")
+            label.grid(row=0, column= 1)
+            cancel = Button(self.CLS, text="Cancel", command= lambda: self.cancel_closing())
+            cancel.grid(row=1, column=0)
+            save = Button(self.CLS, text="Save & Quit", command= lambda: self.save_image_as(1))
+            save.grid(row=1, column=1)
+            quit = Button(self.CLS, text="Quit", command= lambda: self.quit_app())
+            quit.grid(row=1, column=2)
+            self.handle_achievements(1)
+            self.closing = True
+            self.CLS.protocol('WM_DELETE_WINDOW', self.cancel_closing)
+        else:
+            pass
 
-        self.handle_achievements(1)
-
+    def cancel_closing(self):
+        self.CLS.destroy()
+        self.closing = False
+        
     def quit_app(self):
-            self.WIN.destroy()
-            self.CLS.destroy()      
+            try:
+                self.WIN.destroy()
+                self.CLS.destroy()      
+            except TclError:
+                self.CLS.destroy()
 
 class Competition:
     def __init__(self, root):
@@ -852,7 +1042,9 @@ app : App = App()
 #Eventuri
 app.CVS.bind( "<B1-Motion>", app.paint )
 app.CVS.bind( "<Button-1>", app.paint )
+app.CVS.bind( "<Button-3>", app.cancel )
 app.CVS.bind( "<ButtonRelease-1>", app.release )
+app.CVS.bind( "<Motion>", app.update_mouse_position)
 app.CVS.pack()
 
 app.CLR.bind( "<Button-1>", app.clr_test )

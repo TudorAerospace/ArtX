@@ -16,8 +16,15 @@ class App:
         self.WIN.geometry(f"{self.width}x{self.height}")
         self.WIN.resizable(False, False)
         self.WIN.config(bg="white")
+        self.CLS = None
+        self.WIN_BTR = None
+        self.NFW = None
 
         self.closing: bool = False
+        self.compare_colors_open: bool = False
+        self.buttons_right_open: bool = False
+        self.main_focus: bool = True
+        self.secondary_focus: bool = False
 
         self.directories = ['ArtX', 'Assets']
         self.filename = 'rectangle.png'
@@ -51,13 +58,15 @@ class App:
         self.CVS_height_default: int = 720
         self.CVS_width: int = 1000
         self.CVS_height: int = 720
+        self.CVS_width_extended: int = 1260
+        self.CVS_height_extended: int = 720
 
-        self.CVS = Canvas(self.WIN, width=1000, height=720)
-        self.CVS.create_rectangle(2, 2, 1001, 717, fill="#ffffff", outline="#000000")
+        self.x_deviation = 0
+        self.y_deviation = 0
+
+        self.CVS = Canvas(self.WIN, width= self.CVS_width_default, height=self.CVS_height_default)
+        self.CVS.create_rectangle(2, 2, self.CVS_width_default, self.CVS_height_default-3, fill="#ffffff", outline="#000000")
         self.CVS.config(cursor="pencil")
-
-        self.CLR = Canvas(self.WIN, width=250, height=310)
-        self.CLR.place(x=1280, y=400)
 
         self.first_click: bool = False
         self.first_click_2: bool = False
@@ -84,66 +93,39 @@ class App:
         self.path = self.artx_directory.replace('ArtX.py', 'Assets\\rectangle.png')
         self.artx_directory = self.artx_directory.replace('ArtX.py', '')
 
-        # Import images for buttons
-        self.photo_rectangle = PhotoImage(file=self.path)
-        self.path = self.path.replace('rectangle.png', 'picker.png')
-        self.photo_picker = PhotoImage(file=self.path)
-        self.path = self.path.replace('picker.png', 'ellipse.png')
-        self.photo_ellipse = PhotoImage(file=self.path)
-        self.path = self.path.replace('ellipse.png', 'line.png')
-        self.photo_line = PhotoImage(file=self.path)
-        self.path = self.path.replace('line.png', 'triangle.png')
-        self.photo_triangle = PhotoImage(file=self.path)
-        self.path = self.path.replace('triangle.png', 'pick_clr.png')
-        self.photo_pick_clr = PhotoImage(file=self.path)
-        self.path = self.path.replace('pick_clr.png', 'check.png')
-        self.photo_check = PhotoImage(file=self.path)
-        self.path = self.path.replace('check.png', 'eraser.png')
-        self.photo_eraser = PhotoImage(file=self.path)
-        self.path = self.path.replace('eraser.png', 'brush.png')
-        self.photo_brush = PhotoImage(file=self.path)
-        self.path = self.path.replace('brush.png', 'bucket.png')
-        self.photo_bucket = PhotoImage(file=self.path)
-        self.path = self.path.replace('bucket.png', 'lighten.png')
-        self.photo_lighten = PhotoImage(file=self.path)
-        self.path = self.path.replace('lighten.png', 'darken.png')
-        self.photo_darken = PhotoImage(file=self.path)
-        self.path = self.path.replace('darken.png', 'icon.png')
-        self.photo_icon = PhotoImage(file=self.path)
-        self.path = self.path.replace('icon.png', 'trophy.png')
-        self.photo_trophy = PhotoImage(file=self.path)
-        self.path = self.path.replace('trophy.png', 'zoom_out.png')
-        self.photo_zoom_out = PhotoImage(file=self.path)
-        self.path = self.path.replace('zoom_out.png', 'zoom_in.png')
-        self.photo_zoom_in = PhotoImage(file=self.path)
-        self.path = self.path.replace('zoom_in.png', 'achievement_1_inc.png')
-        self.photo_ach_1_inc = PhotoImage(file=self.path)
-        self.path = self.path.replace('achievement_1_inc.png', 'achievement_1_com.png')
-        self.photo_ach_1_com = PhotoImage(file=self.path)
-        self.path = self.path.replace('achievement_1_com.png', 'achievement_2_inc.png')
-        self.photo_ach_2_inc = PhotoImage(file=self.path)
-        self.path = self.path.replace('achievement_2_inc.png', 'achievement_2_com.png')
-        self.photo_ach_2_com = PhotoImage(file=self.path)
-        self.path = self.path.replace('achievement_2_com.png', 'achievement_3_inc.png')
-        self.photo_ach_3_inc = PhotoImage(file=self.path)
-        self.path = self.path.replace('achievement_3_inc.png', 'achievement_3_com.png')
-        self.photo_ach_3_com = PhotoImage(file=self.path)
-        self.path = self.path.replace('achievement_3_com.png', 'achievement_4_inc.png')
-        self.photo_ach_4_inc = PhotoImage(file=self.path)
-        self.path = self.path.replace('achievement_4_inc.png', 'achievement_4_com.png')
-        self.photo_ach_4_com = PhotoImage(file=self.path)
-        self.path = self.path.replace('achievement_4_com.png', 'achievement_5_com.png')
-        self.photo_ach_5_com = PhotoImage(file=self.path)
-        self.path = self.path.replace('achievement_5_com.png', 'achievement_5_inc.png')
-        self.photo_ach_5_inc = PhotoImage(file=self.path)
-        self.path = self.path.replace('achievement_5_inc.png', 'achievement_6_com.png')
-        self.photo_ach_6_com = PhotoImage(file=self.path)
-        self.path = self.path.replace('achievement_6_com.png', 'achievement_6_inc.png')
-        self.photo_ach_6_inc = PhotoImage(file=self.path)
-        
+        self.CVS.bind( "<B1-Motion>", self.paint )
+        self.CVS.bind( "<Button-1>", self.paint )
+        self.CVS.bind( "<Button-3>", self.cancel )
+        self.CVS.bind( "<ButtonRelease-1>", self.release )
+        self.CVS.bind( "<Motion>", self.update_mouse_position)
+        self.CVS.pack()
+        self.WIN.bind( "<Unmap>", self.on_minimize)
+        self.WIN.bind( "<Map>", self.on_restore)
+
+        image_names = [
+    'rectangle.png', 'picker.png', 'ellipse.png', 'line.png', 'triangle.png',
+    'pick_clr.png', 'check.png', 'eraser.png', 'brush.png', 'bucket.png',
+    'lighten.png', 'darken.png', 'icon.png', 'trophy.png', 'zoom_out.png', 'load_text.png', 
+    'save_text.png','zoom_in.png', 'draw.png', 'achievement_1_inc.png', 'achievement_1_com.png',
+    'achievement_2_inc.png', 'achievement_2_com.png', 'achievement_3_inc.png',
+    'achievement_3_com.png', 'achievement_4_inc.png', 'achievement_4_com.png',
+    'achievement_5_com.png', 'achievement_5_inc.png', 'achievement_6_com.png',
+    'achievement_6_inc.png', 'achievement_7_com.png', 'achievement_7_inc.png',
+    'achievement_8_com.png', 'achievement_8_inc.png']
+        photos = {}
+
+        for name in image_names:
+            var_name = name 
+            path = self.path.replace('rectangle.png', name)
+            photos[var_name] = PhotoImage(file=path)
+
+        for attr in image_names:
+            attr2 = attr.replace('.png', '')
+            setattr(self, f'photo_{attr2}', photos[f'{attr}'])
+
         self.WIN.iconphoto(False, self.photo_icon)
         self.start_time = time.time()
-        
+         
         self.ach_1_complete = False
         self.ach_1_complete_shown = False
         self.ach_2_complete = False
@@ -155,8 +137,22 @@ class App:
         self.ach_5_complete = False
         self.ach_5_complete_shown = False
         self.ach_6_complete = False
-        self.ach_6_complete_shown = False
+        self.ach_6_complete_shown = False      
+        self.ach_7_complete = False
+        self.ach_7_complete_shown = False
+        self.ach_8_complete = False
+        self.ach_8_complete_shown = False
 
+    def on_minimize(self, event):
+        if event.widget == self.WIN:
+            self.cc_close()
+            self.br_close()
+
+    def on_restore(self, event):
+        if event.widget == self.WIN:
+            self.draw_buttons_right()
+            self.compare_colors()
+        
     def create_mark(self, x0, y0, x1, y1):
         self.CVS.delete("mark1")
         self.CVS.create_line(x0, y0, x1, y1, fill="blue", tags="mark1", width=2)
@@ -215,7 +211,7 @@ class App:
                 self.CVS.after(400, self.enable_click)
             elif self.x1 is None and self.y1 is None:
                 self.x1, self.y1 = event.x, event.y
-                self.cancel_update_marks()  # Stop updating marks and delete existing marks
+                self.cancel_update_marks()
                 try:
                     if self.brush_type == "rectangle":
                         if self.x1 < self.x0:
@@ -350,21 +346,6 @@ class App:
         self.draw.rectangle([0, 0, 1001, 720], fill=self.Colour2, outline=self.Colour2)
         self.bkgr_clr = self.Colour
 
-    def new_file(self, width, height): #Acelasi lucru dar da fill cu alb (si face un canvas nou in Pillow)
-        if width > 1000:
-            width = 1000
-        if height > 720:
-            height = 720
-        self.CVS.config(height=height, width=width)
-        self.CVS.create_rectangle(2, 2, width, height, fill = "#ffffff", outline="#000000")
-        self.image = Image.new("RGB", (width, height), "#ffffff")
-        self.draw = ImageDraw.Draw(self.image)
-        self.CVS_width = width
-        self.CVS_height = height
-        self.image_states = []
-        self.NFW.destroy()
-        self.first_click_2 = False
-
     def get_idea(self): #Generator idei
         num = random.randint(0, 100)
         w = self.d1[random.randint(0, len(self.d1) - 1)]
@@ -479,6 +460,8 @@ class App:
             self.save_image_as(0)
         elif event.state == 4 and event.keysym == 'z':
             self.revert_state()
+        elif event.state == 4 and event.keysym == 'e':
+            self.extend_canvas()
         
     def release(self, event=None):
         if self.brush_type == "brush" or self.brush_type == "eraser":
@@ -522,20 +505,38 @@ class App:
             self.image_states.append(("image", None, None, None, None, None, None, None))
 
     def extend_canvas(self):
-        self.CVS_height = self.CVS_height_default
-        self.CVS_width = self.CVS_width_default
-        self.CVS.config(height=self.CVS_height, width=self.CVS_width)
+        if self.CVS_height < self.CVS_height_default and self.CVS_width < self.CVS_width_default:
+            self.CVS_height = self.CVS_height_default
+            self.CVS_width = self.CVS_width_default
+            self.CVS.config(height=self.CVS_height, width=self.CVS_width)
 
-        extended_image = Image.new('RGB', (self.CVS_width, self.CVS_height), (255, 255, 255))
-        extended_image.paste(self.image, (0, 0))
-        
-        self.image = extended_image.copy()
-        self.tk_image = ImageTk.PhotoImage(self.image)
-        self.CVS.delete(ALL)
-        self.CVS.create_image(0, 0, anchor=NW, image=self.tk_image)
-        self.CVS.image = self.tk_image
-        self.draw = ImageDraw.Draw(self.image)
-        self.image_backup = self.image.copy()
+            extended_image = Image.new('RGB', (self.CVS_width, self.CVS_height), (255, 255, 255))
+            extended_image.paste(self.image, (0, 0))
+            
+            self.image = extended_image.copy()
+            self.tk_image = ImageTk.PhotoImage(self.image)
+            self.CVS.delete(ALL)
+            self.CVS.create_image(0, 0, anchor=NW, image=self.tk_image)
+            self.CVS.image = self.tk_image
+            self.draw = ImageDraw.Draw(self.image)
+            self.image_backup = self.image.copy()
+        elif self.CVS_height >= self.CVS_height_default or self.CVS_width >= self.CVS_width_default:
+            self.CVS_height = self.CVS_height_extended
+            self.CVS_width = self.CVS_width_extended
+            self.CVS.config(height=self.CVS_height, width=self.CVS_width)
+            self.CVS.place(x=self.width-1280, y=0)
+
+            extended_image = Image.new('RGB', (self.CVS_width, self.CVS_height), (255, 255, 255))
+            extended_image.paste(self.image, (0, 0))
+            
+            self.image = extended_image.copy()
+            self.tk_image = ImageTk.PhotoImage(self.image)
+            self.CVS.delete(ALL)
+            self.CVS.create_image(0, 0, anchor=NW, image=self.tk_image)
+            self.CVS.image = self.tk_image
+            self.draw = ImageDraw.Draw(self.image)
+            self.image_backup = self.image.copy()
+            self.x_deviation = 250
 
     def pick_size(self, x):   #Marimea pensulei
         self.brush_size = int(x)
@@ -559,6 +560,9 @@ class App:
 
     #Filtre
     def filter(self, _type): 
+        if self.achievements['ach_8'] == 0:
+            self.achievements['ach_8'] = 1
+            self.handle_achievements(1)
         if _type == "bnw":
             self.image = self.image.convert("1")
             self.Colour = 'black'
@@ -630,13 +634,13 @@ class App:
         frame = Frame(self.canvas)
         self.canvas.create_window((0, 0), window=frame, anchor="nw")
 
-        achievements_status = [self.ach_1_complete, self.ach_2_complete,self.ach_3_complete, self.ach_4_complete, self.ach_5_complete, self.ach_6_complete]
+        achievements_status = [self.ach_1_complete, self.ach_2_complete,self.ach_3_complete, self.ach_4_complete, self.ach_5_complete, self.ach_6_complete, self.ach_7_complete, self.ach_8_complete]
 
-        achievements_images_inc = [self.photo_ach_1_inc, self.photo_ach_2_inc, self.photo_ach_3_inc, self.photo_ach_4_inc, self.photo_ach_5_inc, self.photo_ach_6_inc]
+        achievements_images_inc = [self.photo_achievement_1_inc, self.photo_achievement_2_inc, self.photo_achievement_3_inc, self.photo_achievement_4_inc, self.photo_achievement_5_inc, self.photo_achievement_6_inc, self.photo_achievement_7_inc, self.photo_achievement_8_inc]
 
-        achievements_images_com = [self.photo_ach_1_com, self.photo_ach_2_com, self.photo_ach_3_com, self.photo_ach_4_com, self.photo_ach_5_com, self.photo_ach_6_com]
+        achievements_images_com = [self.photo_achievement_1_com, self.photo_achievement_2_com, self.photo_achievement_3_com, self.photo_achievement_4_com, self.photo_achievement_5_com, self.photo_achievement_6_com, self.photo_achievement_7_com, self.photo_achievement_8_com]
 
-        for i in range(0, 6):
+        for i in range(0, 8):
             image = achievements_images_com[i] if achievements_status[i] else achievements_images_inc[i]
             button = Button(frame, command=lambda: self.handle_achievements(0), image=image)
             button.config(width=470, height=80)
@@ -653,45 +657,124 @@ class App:
             pass
 
     def open_new_file_window(self):
-        if self.first_click_2 == False:
-            self.NFW = Tk()
+        if not self.first_click_2:
+            self.NFW = Toplevel()
+            self.NFW.attributes('-topmost', True)
             self.NFW.resizable(False, False)
             self.NFW.title("New")
             self.NFW.protocol('WM_DELETE_WINDOW', self.cancel_create_new)
+            x = self.WIN.winfo_x()
+            y = self.WIN.winfo_y()
+            self.NFW.geometry(f"+{x + 640}+{y + 210}")
+
             label_pxl_size = Label(self.NFW, text="Pixel size:")
             label_pxl_size.grid(column=0, row=0, pady=5)
+
             label_width = Label(self.NFW, text="Width: ")
             label_width.grid(column=0, row=1, pady=5)
-            label_width = Label(self.NFW, text="Height: ")
-            label_width.grid(column=0, row=2, pady=5)
-            spinbox_width = Spinbox(self.NFW, from_ = 1, to=1000)
+            
+            label_height = Label(self.NFW, text="Height: ")
+            label_height.grid(column=0, row=2, pady=5)
+
+            spinbox_width = Spinbox(self.NFW, from_=1, to=1000)
             spinbox_width.grid(column=1, row=1)
-            spinbox_height = Spinbox(self.NFW, from_ = 1, to=720)    
-            spinbox_height.grid(column=1, row=2) 
+
+            spinbox_height = Spinbox(self.NFW, from_=1, to=720)
+            spinbox_height.grid(column=1, row=2)
+
             label_pxl_0 = Label(self.NFW, text="pixels")
             label_pxl_0.grid(column=2, row=1)
+
             label_pxl_1 = Label(self.NFW, text="pixels")
             label_pxl_1.grid(column=2, row=2)
-            button_confirm = Button(self.NFW, text="OK", command= lambda: self.new_file(int(spinbox_width.get()), int(spinbox_height.get())))
+
+            button_confirm = Button(self.NFW, text="OK", command=lambda: self.new_file(int(spinbox_width.get()), int(spinbox_height.get())))
             button_confirm.grid(column=1, row=3)
             button_confirm.config(width=10)
-            button_cancel = Button(self.NFW, text="Cancel", command= lambda: self.cancel_create_new())
+
+            button_cancel = Button(self.NFW, text="Cancel", command=self.cancel_create_new)
             button_cancel.grid(column=2, row=3)
             button_cancel.config(width=7)
-        self.first_click_2: bool = True
+
+            spinbox_width.bind("<FocusOut>", lambda event: self.validate_spinbox_value(spinbox_width, 1270))
+            spinbox_height.bind("<FocusOut>", lambda event: self.validate_spinbox_value(spinbox_height, 720))
+
+            self.first_click_2 = True
+
+    def new_file(self, width, height): #Acelasi lucru dar da fill cu alb (si face un canvas nou in Pillow)
+            if width > 1260:
+                width = 1260
+            if height > 720:
+                height = 720
+            self.CVS.config(height=height, width=width)
+            self.CVS.create_rectangle(2, 2, width, height, fill = "#ffffff", outline="#000000")
+            self.image = Image.new("RGB", (width, height), "#ffffff")
+            self.draw = ImageDraw.Draw(self.image)
+            self.CVS_width = width
+            self.CVS_height = height
+            self.image_states = []
+            self.NFW.destroy()
+            self.first_click_2 = False
+            if width <= 1000:
+                self.x_deviation = 0
+            else:
+                self.x_deviation = width - 1000
+                self.CVS.place(x=self.width-1300 + self.x_deviation//7, y=0)
+            self.y_deviation = 0
+
+    def validate_spinbox_value(self, spinbox, max_value):
+        value = spinbox.get()
+        if value.isdigit() and int(value) > max_value:
+            spinbox.delete(0, 'end')
+            spinbox.insert(0, max_value)
 
     def cancel_create_new(self):
         self.NFW.destroy()
         self.first_click_2 = False
 
+    def handle_notes(self, action):
+        appdata_dir = os.getenv('APPDATA')
+        shelf_dir = os.path.join(appdata_dir, "ArtX")
+        os.makedirs(shelf_dir, exist_ok=True)
+        shelf_path = os.path.join(shelf_dir, "notes")
+        if action == 0: # load
+            with shelve.open(shelf_path) as shelf:
+                notes = shelf.get('notes', '')
+                self.notes_text.delete(1.0, "end")
+                self.notes_text.insert("end", notes)
+        elif action == 1:  # save
+            with shelve.open(shelf_path) as shelf:
+                notes = self.notes_text.get(1.0, "end").strip()
+                shelf['notes'] = notes
+            if self.achievements['ach_7'] == 0:
+                self.achievements['ach_7'] = 1
+                self.handle_achievements(1)
+
+    def draw_label(self):   # Text + Notes
+        label_notes = Label(self.WIN, text="📋Notes", font=("Arial", 16, "bold"), fg="black", bg="white")
+        label_notes.place(x=95, y=370)
+        self.notes_text = Text(self.WIN, width=30, height=17, bg="grey94")
+        self.notes_text.place(x=10, y=400)
+        self.handle_notes(0)
+        load_button = Button(self.WIN, image=self.photo_load_text, command=lambda: self.handle_notes(0))
+        load_button.place(x=10, y=680)
+        load_button.config(width=110)
+        save_button = Button(self.WIN, image=self.photo_save_text, command=lambda: self.handle_notes(1))
+        save_button.place(x=135, y=680)
+        save_button.config(width=110)
+
     def handle_achievements(self, action):
-        shelf_path = os.path.join(self.artx_directory, "Assets", "achievement_progress")
+        appdata_dir = os.getenv('APPDATA')
+        
+        shelf_dir = os.path.join(appdata_dir, "ArtX")
+        os.makedirs(shelf_dir, exist_ok=True)
+        shelf_path = os.path.join(shelf_dir, "achievement_progress")
 
         if action == 0:
             with shelve.open(shelf_path) as db:
-                self.achievements = db.get('achievements', {'ach_1': 0, 'ach_2': 0, 'ach_3': 0, 'ach_4': 0, 'ach_6': 0})
+                self.achievements = db.get('achievements', {'ach_1': 0, 'ach_2': 0, 'ach_3': 0, 'ach_4': 0, 'ach_6': 0, 'ach_7': 0, 'ach_8': 0})
 
-            if self.achievements['ach_1'] >= 1:
+            if self.achievements['ach_1'] == 1:
                 self.ach_1_complete_shown = True
             if self.achievements['ach_2'] >= 100:
                 self.ach_2_complete_shown = True
@@ -701,18 +784,23 @@ class App:
                 self.ach_4_complete_shown = True
             if self.achievements['ach_2'] >= 500:
                 self.ach_5_complete_shown = True
-            if self.achievements['ach_6'] >= 1:
+            if self.achievements['ach_6'] == 1:
                 self.ach_6_complete_shown = True
-
-        elif action == 1:
+            if self.achievements['ach_7'] == 1:
+                self.ach_7_complete_shown = True        
+            if self.achievements['ach_8'] == 1:
+                self.ach_8_complete_shown = True
+            print(self.achievements)
+        
+        if action == 1:
             self.end_time = time.time()
             self.achievements['ach_3'] = int(self.end_time - self.start_time)
+            self.start_time = time.time()
             with shelve.open(shelf_path) as db:
                 db['achievements'] = self.achievements
-
             self.handle_achievements(2)
 
-        elif action == 2:
+        if action == 2:
             if self.achievements['ach_1'] == 1:
                 self.ach_1_complete = True
                 self.achievement_notification(1)
@@ -736,20 +824,29 @@ class App:
             if self.achievements['ach_6'] == 1:
                 self.ach_6_complete = True
                 self.achievement_notification(6)
-                self.ach_6_complete_shown = True
-  
+                self.ach_6_complete_shown = True            
+            if self.achievements['ach_7'] == 1:
+                self.ach_7_complete = True
+                self.achievement_notification(7)
+                self.ach_7_complete_shown = True            
+            if self.achievements['ach_8'] == 1:
+                self.ach_8_complete = True
+                self.achievement_notification(8)
+                self.ach_8_complete_shown = True
+            
     def achievement_notification(self, action):
-        achievements_complete_shown = [self.ach_1_complete_shown, self.ach_2_complete_shown, self.ach_3_complete_shown, self.ach_4_complete_shown, self.ach_5_complete_shown, self.ach_6_complete_shown]
-        if action in range(1, 7) and not achievements_complete_shown[action - 1]:
+        achievements_complete_shown = [self.ach_1_complete_shown, self.ach_2_complete_shown, self.ach_3_complete_shown, self.ach_4_complete_shown, self.ach_5_complete_shown, self.ach_6_complete_shown, self.ach_7_complete_shown, self.ach_8_complete_shown]
+        if action in range(1, 10) and not achievements_complete_shown[action - 1]:
             ACH_N = Toplevel(self.WIN)
             ACH_N.title("Achievement Got!")
             ACH_N.geometry("500x100")
+            ACH_N.attributes('-topmost', True)
             ACH_N.resizable(False, False)
             ACH_N.iconphoto(False, self.photo_trophy)
-            achievements_complete_shown = [ self.ach_1_complete_shown, self.ach_2_complete_shown, self.ach_3_complete_shown, self.ach_4_complete_shown, self.ach_5_complete_shown, self.ach_6_complete_shown]           
-            achievements_images_com = [self.photo_ach_1_com, self.photo_ach_2_com, self.photo_ach_3_com, self.photo_ach_4_com, self.photo_ach_5_com, self.photo_ach_6_com]
+            achievements_complete_shown = [self.ach_1_complete_shown, self.ach_2_complete_shown, self.ach_3_complete_shown, self.ach_4_complete_shown, self.ach_5_complete_shown, self.ach_6_complete_shown, self.ach_7_complete_shown, self.ach_8_complete_shown]
+            achievements_images_com = [self.photo_achievement_1_com, self.photo_achievement_2_com, self.photo_achievement_3_com, self.photo_achievement_4_com, self.photo_achievement_5_com, self.photo_achievement_6_com, self.photo_achievement_7_com, self.photo_achievement_8_com]
             image = None
-            if action in range(1, 7) and not achievements_complete_shown[action - 1]:
+            if action in range(1, 10) and not achievements_complete_shown[action - 1]:
                 image = achievements_images_com[action - 1]
             achievement = Button(ACH_N, command=lambda: self.handle_achievements(0), image=image)
             achievement.config(width=470, height=80)
@@ -776,9 +873,9 @@ class App:
         button_brush.place(x=176, y=5)
         button_brush.config(width=72, height=20, cursor="hand2", command = lambda: self.set_type("brush"))
         #sugestii de desen
-        button_suggestion = Button(self.WIN, text="Draw:")
+        button_suggestion = Button(self.WIN, image=self.photo_draw)
         button_suggestion.place(x=10, y=300)
-        button_suggestion.config(width=10, height=2, cursor="hand2", command = self.get_idea)
+        button_suggestion.config(width=73, height=35, cursor="hand2", command = self.get_idea)
         #dreptunghi
         button_rectangle = Button(self.WIN, image = self.photo_rectangle, compound = LEFT)
         button_rectangle.place(x=5, y=35)
@@ -815,69 +912,79 @@ class App:
         button_zoom_in = Button(self.WIN, image = self.photo_zoom_in, compound = LEFT)
         button_zoom_in.place(x=90, y=135)
         button_zoom_in.config(width=73, height=36, cursor="hand2", command = lambda: self.handle_zoom(1))
-
-        #butoane dreapta
-        #clr/bgr
-        button_pick = Button(self.WIN, image=self.photo_pick_clr)
-        button_pick.place(x=1283, y=185)
-        button_pick.config(width=120, height=36, cursor="hand2", command = self.pick_color)
-        color_button = Button(self.WIN, image=self.photo_bucket)
-        color_button.place(x=1412, y=185)
-        color_button.config(width=110, height=36, cursor="hand2", command = self.paint_background)
-        #rgb
-        button_r = Button(self.WIN,bg="#ff0000")
-        button_r.place(x=1283, y=5)
-        button_r.config(width=10, height=2, cursor="hand2", command = lambda: self.assign_colour("#ff0000"))
-        button_g = Button(self.WIN, bg="#228b22")
-        button_g.place(x=1365, y=5)
-        button_g.config(width=10, height=2, cursor="hand2", command = lambda: self.assign_colour("#228b22"))
-        button_b = Button(self.WIN, bg="#00008b")
-        button_b.place(x=1447, y=5)
-        button_b.config(width=10, height=2, cursor="hand2", command = lambda: self.assign_colour("#00008b"))
-        #yop
-        button_y = Button(self.WIN, bg="#e6cc00")
-        button_y.place(x=1283, y=50)
-        button_y.config(width=10, height=2, cursor="hand2", command = lambda: self.assign_colour("#e6cc00"))
-        button_o = Button(self.WIN, bg="#fca510")
-        button_o.place(x=1365, y=50)
-        button_o.config(width=10, height=2, cursor="hand2", command = lambda: self.assign_colour("#fca510"))
-        button_p = Button(self.WIN, bg="#8a00c2")
-        button_p.place(x=1447, y=50)
-        button_p.config(width=10, height=2, cursor="hand2", command = lambda: self.assign_colour("#8a00c2"))
-        #bpb
-        button_y = Button(self.WIN, bg="#724a24")
-        button_y.place(x=1283, y=95)
-        button_y.config(width=10, height=2, cursor="hand2", command = lambda: self.assign_colour("#724a24"))
-        button_o = Button(self.WIN, bg="#f98cb9")
-        button_o.place(x=1365, y=95)
-        button_o.config(width=10, height=2, cursor="hand2", command = lambda: self.assign_colour("#f98cb9"))
-        button_p = Button(self.WIN, bg="#d2b48c")
-        button_p.place(x=1447, y=95)
-        button_p.config(width=10, height=2, cursor="hand2", command = lambda: self.assign_colour("#d2b48c"))
-        #wbg
-        button_w = Button(self.WIN, bg="#ffffff")
-        button_w.place(x=1283, y=140)
-        button_w.config(width=10, height=2, cursor="hand2", command = lambda: self.assign_colour("#ffffff"))
-        button_blk = Button(self.WIN, bg="#000000000")
-        button_blk.place(x=1365, y=140)
-        button_blk.config(width=10, height=2, cursor="hand2", command = lambda: self.assign_colour("#000000000"))
-        button_gry = Button(self.WIN, bg="#808080")
-        button_gry.place(x=1447, y=140)
-        button_gry.config(width=10, height=2, cursor="hand2", command = lambda: self.assign_colour("#808080"))
-
+        
+    def draw_buttons_right(self):
+        if self.buttons_right_open == False:
+            self.buttons_right_open = True
+            self.WIN_BTR = Toplevel()
+            self.WIN_BTR.attributes('-topmost', True)
+            self.WIN_BTR.title("Color")
+            self.WIN_BTR.resizable(False, False)
+            self.WIN_BTR.geometry("255x230")
+            self.update_window_position()
+            self.WIN.bind("<Configure>", lambda event: self.update_window_position())
+            self.WIN_BTR.protocol('WM_DELETE_WINDOW', self.br_close)
+            #butoane dreapta
+            #clr/bgr
+            button_pick = Button(self.WIN_BTR, image=self.photo_pick_clr)
+            button_pick.place(x=5, y=185)
+            button_pick.config(width=120, height=36, cursor="hand2", command = self.pick_color)
+            color_button = Button(self.WIN_BTR, image=self.photo_bucket)
+            color_button.place(x=134, y=185)
+            color_button.config(width=110, height=36, cursor="hand2", command = self.paint_background)
+            #rgb
+            button_r = Button(self.WIN_BTR,bg="#ff0000")
+            button_r.place(x=5, y=5)
+            button_r.config(width=10, height=2, cursor="hand2", command = lambda: self.assign_colour("#ff0000"))
+            button_g = Button(self.WIN_BTR, bg="#228b22")
+            button_g.place(x=87, y=5)
+            button_g.config(width=10, height=2, cursor="hand2", command = lambda: self.assign_colour("#228b22"))
+            button_b = Button(self.WIN_BTR, bg="#00008b")
+            button_b.place(x=169, y=5)
+            button_b.config(width=10, height=2, cursor="hand2", command = lambda: self.assign_colour("#00008b"))
+            #yop
+            button_y = Button(self.WIN_BTR, bg="#e6cc00")
+            button_y.place(x=5, y=50)
+            button_y.config(width=10, height=2, cursor="hand2", command = lambda: self.assign_colour("#e6cc00"))
+            button_o = Button(self.WIN_BTR, bg="#fca510")
+            button_o.place(x=87, y=50)
+            button_o.config(width=10, height=2, cursor="hand2", command = lambda: self.assign_colour("#fca510"))
+            button_p = Button(self.WIN_BTR, bg="#8a00c2")
+            button_p.place(x=169, y=50)
+            button_p.config(width=10, height=2, cursor="hand2", command = lambda: self.assign_colour("#8a00c2"))
+            #bpb
+            button_y = Button(self.WIN_BTR, bg="#724a24")
+            button_y.place(x=5, y=95)
+            button_y.config(width=10, height=2, cursor="hand2", command = lambda: self.assign_colour("#724a24"))
+            button_o = Button(self.WIN_BTR, bg="#f98cb9")
+            button_o.place(x=87, y=95)
+            button_o.config(width=10, height=2, cursor="hand2", command = lambda: self.assign_colour("#f98cb9"))
+            button_p = Button(self.WIN_BTR, bg="#d2b48c")
+            button_p.place(x=169, y=95)
+            button_p.config(width=10, height=2, cursor="hand2", command = lambda: self.assign_colour("#d2b48c"))
+            #wbg
+            button_w = Button(self.WIN_BTR, bg="#ffffff")
+            button_w.place(x=5, y=140)
+            button_w.config(width=10, height=2, cursor="hand2", command = lambda: self.assign_colour("#ffffff"))
+            button_blk = Button(self.WIN_BTR, bg="#000000000")
+            button_blk.place(x=87, y=140)
+            button_blk.config(width=10, height=2, cursor="hand2", command = lambda: self.assign_colour("#000000000"))
+            button_gry = Button(self.WIN_BTR, bg="#808080")
+            button_gry.place(x=169, y=140)
+            button_gry.config(width=10, height=2, cursor="hand2", command = lambda: self.assign_colour("#808080"))
 
     def draw_menu(self):    #Creaza butoanele din meniu
         file_menu: Menu = Menu(self.menu)
         tool_menu: Menu = Menu(self.menu)
         filter_menu: Menu = Menu(self.menu)
-        self.menu.add_cascade(label='File', menu=file_menu)
-        file_menu.add_command(label='New          Ctrl+N', command=self.open_new_file_window)
-        file_menu.add_command(label='Open...      Ctrl+O', command=self.open_image)
-        file_menu.add_command(label='Save As...   Ctrl+S', command = lambda: self.save_image_as(0))
+        self.menu.add_cascade(label='📄 File', menu=file_menu)
+        file_menu.add_command(label='🗒 New          Ctrl+N', command=self.open_new_file_window)
+        file_menu.add_command(label='📂 Open...      Ctrl+O', command=self.open_image)
+        file_menu.add_command(label='💾 Save As...   Ctrl+S', command = lambda: self.save_image_as(0))
         file_menu.add_separator()
-        file_menu.add_command(label='Exit', command=self.WIN.quit)
+        file_menu.add_command(label='❌ Exit', command=self.WIN.quit)
 
-        self.menu.add_cascade(label='Tools', menu=tool_menu)
+        self.menu.add_cascade(label='🛠️ Tools', menu=tool_menu)
         tool_menu.add_cascade(label='Brush Shape', menu=self.bs_sub_menu)
         self.bs_sub_menu.add_command(label='Ellipse', command= lambda: self.pick_shape("ellipse"))
         self.bs_sub_menu.add_command(label='Rectangle', command= lambda: self.pick_shape("rectangle"))
@@ -887,12 +994,16 @@ class App:
         tool_menu.add_cascade(label="Shapes", menu=self.sp_sub_menu)
         self.sp_sub_menu.add_command(label='Rectangle', command = lambda: self.set_type("rectangle"))
         self.sp_sub_menu.add_command(label='Ellipse', command = lambda: self.set_type("ellipse"))
+        self.sp_sub_menu.add_command(label='Triangle', command = lambda: self.set_type("triangle"))
         self.sp_sub_menu.add_command(label='Line', command = lambda: self.set_type("line"))
 
+
         tool_menu.add_cascade(label='Canvas Tools', menu=self.ct_sub_menu)
+        self.ct_sub_menu.add_command(label='Colors', command= self.draw_buttons_right)
+        self.ct_sub_menu.add_command(label='Compare Colors', command= self.compare_colors)
         self.ct_sub_menu.add_command(label='Extend Canvas', command= self.extend_canvas)
 
-        self.menu.add_cascade(label='Filters', menu=filter_menu)
+        self.menu.add_cascade(label='🌪️ Filters', menu=filter_menu)
         filter_menu.add_command(label='Grayscale', command= lambda: self.filter("grs"))
         filter_menu.add_command(label='Black and White', command= lambda: self.filter("bnw"))
         filter_menu.add_command(label='RGB', command= lambda: self.filter(None))
@@ -905,18 +1016,46 @@ class App:
         filter_menu.add_command(label='Detail', command= lambda: self.filter("DETAIL"))
         filter_menu.add_command(label='Edge Enhance', command= lambda: self.filter("EDGE"))
 
-        self.menu.add_cascade(label='Achievements', command= lambda: self.open_achievement_window())
-        self.menu.add_cascade(label='Competition', command= lambda: self.competition())
+        self.menu.add_cascade(label='🏆 Achievements', command= lambda: self.open_achievement_window())
+        self.menu.add_cascade(label='🤼 Competition', command= lambda: self.competition())
 
-
-    def draw_label(self):   #Text + Notes
-        label_test_clr = Label(self.WIN, text="Compare Colors", font=("Arial", 16, "bold"), fg="black", bg="white")
-        label_test_clr.place(x=1310, y=370)
-        label_notes = Label(self.WIN, text="Notes", font=("Arial", 16, "bold"), fg="black", bg="white")
-        label_notes.place(x=95, y=370)
-        notes = Text(self.WIN, width=30, height=19, bg="grey94")
-        notes.place(x=10, y=400)
+    def compare_colors(self):
+        if self.compare_colors_open == False:
+            self.compare_colors_open = True
+            self.WIN_CLR = Toplevel(self.WIN)
+            self.WIN_CLR.attributes('-topmost', True)
+            self.WIN_CLR.title("Compare Colors")
+            self.WIN_CLR.resizable(False, False)
+            self.CLR = Canvas(self.WIN_CLR, width=250, height=280)
+            self.CLR.grid(row=1, column=0)
+            self.update_window_position()
+            self.WIN.bind("<Configure>", lambda event: self.update_window_position())         
+            self.CLR.bind( "<Button-1>", app.clr_test )
+            self.WIN_CLR.protocol('WM_DELETE_WINDOW', self.cc_close)
     
+    def cc_close(self):
+        self.compare_colors_open = False
+        self.WIN_CLR.destroy()
+    
+    def br_close(self):
+        self.buttons_right_open = False
+        self.WIN_BTR.destroy()
+
+    def update_window_position(self):
+        x = self.WIN.winfo_x()
+        y = self.WIN.winfo_y()
+        try:
+            self.WIN_CLR.geometry(f"+{x + 1280 + self.x_deviation}+{y + 448 + self.y_deviation}")
+            if self.WIN_BTR != None:
+                self.WIN_BTR.geometry(f"+{x + 1280 + self.x_deviation}+{y + 50 + self.y_deviation}")
+            if self.CLS != None:
+                self.CLS.geometry(f"+{x + 640 }+{y + 220}")
+            if self.NFW != None:
+                self.NFW.geometry(f"+{x + 640 }+{y + 220}")
+        except TclError as e:
+            pass
+
+
     def competition(self):
         if self.achievements['ach_6'] == 0:
             self.achievements['ach_6'] = 1
@@ -928,9 +1067,13 @@ class App:
 
     def on_closing(self):
         if self.closing == False:
-            self.CLS = Tk()
+            self.CLS = Toplevel(self.WIN)
+            self.CLS.attributes('-topmost', True)
             self.CLS.resizable(False, False)
             self.CLS.title("Quit? ")
+            x = self.WIN.winfo_x()
+            y = self.WIN.winfo_y()
+            self.CLS.geometry(f"+{x + 640}+{y + 210}")
             label = Label(self.CLS, text="Do you want to quit?")
             label.grid(row=0, column= 1)
             cancel = Button(self.CLS, text="Cancel", command= lambda: self.cancel_closing())
@@ -941,6 +1084,7 @@ class App:
             quit.grid(row=1, column=2)
             self.handle_achievements(1)
             self.closing = True
+            self.handle_notes(1)
             self.CLS.protocol('WM_DELETE_WINDOW', self.cancel_closing)
         else:
             pass
@@ -952,9 +1096,10 @@ class App:
     def quit_app(self):
             try:
                 self.WIN.destroy()
-                self.CLS.destroy()      
+                self.CLS.destroy() 
+                self.NFW.destroy()     
             except TclError:
-                self.CLS.destroy()
+                pass
 
 class Competition:
     def __init__(self, root):
@@ -1040,19 +1185,16 @@ class Competition:
 
 app : App = App()
 #Eventuri
-app.CVS.bind( "<B1-Motion>", app.paint )
-app.CVS.bind( "<Button-1>", app.paint )
-app.CVS.bind( "<Button-3>", app.cancel )
-app.CVS.bind( "<ButtonRelease-1>", app.release )
-app.CVS.bind( "<Motion>", app.update_mouse_position)
-app.CVS.pack()
 
-app.CLR.bind( "<Button-1>", app.clr_test )
+
+app.compare_colors()
+
 app.WIN.bind( "<KeyPress>", app.on_key_press )
 
 app.draw_label()
 app.draw_menu()
 app.draw_buttons()
+app.draw_buttons_right()
 app.handle_achievements(0)
 app.handle_achievements(2)
 app.WIN.protocol('WM_DELETE_WINDOW', app.on_closing)

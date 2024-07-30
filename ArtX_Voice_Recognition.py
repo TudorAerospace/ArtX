@@ -23,11 +23,13 @@ class App:
         self.NFW = None
         self.VCM = None
         self.VCI = None
+        self.BIF = None
 
         self.closing: bool = False
         self.compare_colors_open: bool = False
         self.voice_commands_open: bool = False
         self.buttons_right_open: bool = False
+        self.button_info_open: bool = False
         self.main_focus: bool = True
         self.secondary_focus: bool = False
         self.voice: bool = True
@@ -97,8 +99,8 @@ class App:
         self.colour_num = 0
 
         self.artx_directory = os.path.abspath(__file__)
-        self.path = self.artx_directory.replace('ArtX.py', 'Assets\\rectangle.png')
-        self.artx_directory = self.artx_directory.replace('ArtX.py', '')
+        self.path = self.artx_directory.replace('ArtX_Voice_Recognition.py', 'Assets\\rectangle.png')
+        self.artx_directory = self.artx_directory.replace('ArtX_Voice_Recognition.py', '')
 
         self.CVS.bind( "<B1-Motion>", self.paint )
         self.CVS.bind( "<Button-1>", self.paint )
@@ -118,7 +120,7 @@ class App:
     'achievement_3_com.png', 'achievement_4_inc.png', 'achievement_4_com.png',
     'achievement_5_com.png', 'achievement_5_inc.png', 'achievement_6_com.png',
     'achievement_6_inc.png', 'achievement_7_com.png', 'achievement_7_inc.png',
-    'achievement_8_com.png', 'achievement_8_inc.png']
+    'achievement_8_com.png', 'achievement_8_inc.png', 'info.png']
         photos = {}
 
         for name in image_names:
@@ -425,7 +427,7 @@ class App:
                     self.CVS.create_rectangle(x0, y0, x1, y1, fill=clr, outline=clr, tags=tag)
                     self.draw.rectangle([x0, y0, x1, y1], fill=clr2, outline=clr2)
                 elif tag == "image":
-                    self.image = self.image_backup.copy()  # Restore the backup image
+                    self.image = self.image_backup.copy() 
                     self.draw = ImageDraw.Draw(self.image)
                     self.tk_image = ImageTk.PhotoImage(self.image)
                     self.CVS.config(height=self.image.height, width=self.image.width)
@@ -488,7 +490,7 @@ class App:
             loaded_image = loaded_image.resize((loaded_image.width - loaded_image.width // 10, loaded_image.height - loaded_image.height // 10))
         
         self.image = loaded_image
-        self.image_backup = loaded_image.copy()  # Create a deep copy of the image
+        self.image_backup = loaded_image.copy() # != self.image_backup = loaded_image
         self.draw = ImageDraw.Draw(self.image)
         self.tk_image = ImageTk.PhotoImage(loaded_image)
         self.CVS.config(height=self.image.height, width=self.image.width)
@@ -507,7 +509,7 @@ class App:
                 if zoomed_image.width + zoomed_image.width // 10 < self.CVS_width_default and zoomed_image.height + zoomed_image.height // 10 < self.CVS_height_default:
                     zoomed_image = self.image.resize((zoomed_image.width + zoomed_image.width // 10, zoomed_image.height + zoomed_image.height // 10))
                     self.image = zoomed_image
-            self.image_backup = zoomed_image.copy()  # Create a deep copy of the image
+            self.image_backup = zoomed_image.copy() 
             self.draw = ImageDraw.Draw(self.image)
             self.tk_image = ImageTk.PhotoImage(zoomed_image)
             self.CVS.config(height=self.image.height, width=self.image.width)
@@ -517,7 +519,7 @@ class App:
             self.CVS_width, self.CVS_height = self.image.width, self.image.height
             self.image_states.append(("image", None, None, None, None, None, None, None))
 
-    def extend_canvas(self):
+    def extend_canvas(self): # Extinde canvasul in 2 moduri (1000x720 / 1260x720)
         if self.CVS_height < self.CVS_height_default and self.CVS_width < self.CVS_width_default:
             self.CVS_height = self.CVS_height_default
             self.CVS_width = self.CVS_width_default
@@ -553,10 +555,10 @@ class App:
             self.x_deviation = 250
             self.update_window_position()
 
-    def pick_size(self, x):   #Marimea pensulei
+    def pick_size(self, x):   # Marimea pensulei
         self.brush_size = int(x)
 
-    def pick_shape(self, x):  #Forma pensulei
+    def pick_shape(self, x):  # Alege Forma pensulei
         global brush_shape, brush_type
         if x == "ellipse":
             self.brush_shape = "ellipse"
@@ -564,11 +566,11 @@ class App:
         elif x == "rectangle":
             self.brush_shape = "rectangle"
             self.brush_type = "brush"
-        elif x == "pen":    #Pentru forme interesante
+        elif x == "pen":    # Pentru forma de stilou
             self.brush_shape = "pen"
             self.brush_type = "brush"
 
-    def eraser(self): #Guma de sters (seteaza culoarea pensulei la culoarea backgrounduli)
+    def eraser(self): # Guma de sters (seteaza culoarea pensulei la culoarea backgroundului)
         self.CVS.config(cursor="circle") 
         self.Colour = self.bkgr_clr
         self.Colour2 = ImageColor.getrgb(self.Colour)
@@ -616,21 +618,24 @@ class App:
         self.CVS.create_image(0, 0, anchor=NW, image=self.tk_image) 
         self.CVS.image = self.tk_image
 
-    def brightness(self, _type):
-        if _type == 0:
-            self.brightness_factor -= 0.1
-            enhancer = ImageEnhance.Brightness(self.image)
-            self.image = enhancer.enhance(self.brightness_factor)
-        elif _type == 1:
-            self.brightness_factor += 0.1
-            enhancer = ImageEnhance.Brightness(self.image)
-            self.image = enhancer.enhance(self.brightness_factor)
-        self.draw = ImageDraw.Draw(self.image)
-        self.tk_image = ImageTk.PhotoImage(self.image)
-        self.CVS.delete(ALL)
-        self.CVS.create_image(0, 0, anchor=NW, image=self.tk_image) 
-        self.CVS.image = self.tk_image
-        self.brightness_factor = 1.0
+    def brightness(self, _type): # Pentru butoanele de brightness
+        try:
+            if _type == 0:
+                self.brightness_factor -= 0.1
+                enhancer = ImageEnhance.Brightness(self.image)
+                self.image = enhancer.enhance(self.brightness_factor)
+            elif _type == 1:
+                self.brightness_factor += 0.1
+                enhancer = ImageEnhance.Brightness(self.image)
+                self.image = enhancer.enhance(self.brightness_factor)
+            self.draw = ImageDraw.Draw(self.image)
+            self.tk_image = ImageTk.PhotoImage(self.image)
+            self.CVS.delete(ALL)
+            self.CVS.create_image(0, 0, anchor=NW, image=self.tk_image) 
+            self.CVS.image = self.tk_image
+            self.brightness_factor = 1.0
+        except ValueError:
+            pass
 
     def open_achievement_window(self):
         ACH = Toplevel(self.WIN)
@@ -684,33 +689,24 @@ class App:
 
             label_pxl_size = Label(self.NFW, text="Pixel size:")
             label_pxl_size.grid(column=0, row=0, pady=5)
-
             label_width = Label(self.NFW, text="Width: ")
             label_width.grid(column=0, row=1, pady=5)
-            
             label_height = Label(self.NFW, text="Height: ")
             label_height.grid(column=0, row=2, pady=5)
-
             spinbox_width = Spinbox(self.NFW, from_=1, to=1000)
             spinbox_width.grid(column=1, row=1)
-
             spinbox_height = Spinbox(self.NFW, from_=1, to=720)
             spinbox_height.grid(column=1, row=2)
-
-            label_pxl_0 = Label(self.NFW, text="pixels")
-            label_pxl_0.grid(column=2, row=1)
-
-            label_pxl_1 = Label(self.NFW, text="pixels")
-            label_pxl_1.grid(column=2, row=2)
-
+            label_pxl_x = Label(self.NFW, text="pixels")
+            label_pxl_x.grid(column=2, row=1)
+            label_pxl_y = Label(self.NFW, text="pixels")
+            label_pxl_y.grid(column=2, row=2)
             button_confirm = Button(self.NFW, text="OK", command=lambda: self.new_file(int(spinbox_width.get()), int(spinbox_height.get())))
             button_confirm.grid(column=1, row=3)
             button_confirm.config(width=10)
-
             button_cancel = Button(self.NFW, text="Cancel", command=self.cancel_create_new)
             button_cancel.grid(column=2, row=3)
             button_cancel.config(width=7)
-
             spinbox_width.bind("<FocusOut>", lambda event: self.validate_spinbox_value(spinbox_width, 1270))
             spinbox_height.bind("<FocusOut>", lambda event: self.validate_spinbox_value(spinbox_height, 720))
 
@@ -779,8 +775,7 @@ class App:
         save_button.config(width=110)
 
     def handle_achievements(self, action):
-        appdata_dir = os.getenv('APPDATA')
-        
+        appdata_dir = os.getenv('APPDATA') # Fisierul Appdata
         shelf_dir = os.path.join(appdata_dir, "ArtX")
         os.makedirs(shelf_dir, exist_ok=True)
         shelf_path = os.path.join(shelf_dir, "achievement_progress")
@@ -927,6 +922,10 @@ class App:
         button_zoom_in = Button(self.WIN, image = self.photo_zoom_in, compound = LEFT)
         button_zoom_in.place(x=90, y=135)
         button_zoom_in.config(width=73, height=36, cursor="hand2", command = lambda: self.handle_zoom(1))
+
+        self.CVS_V = Canvas(self.WIN, bg="red")
+        self.CVS_V.place(x=175, y=135)
+        self.CVS_V.config(width=75, height=40)
         
     def draw_buttons_right(self):
         if self.buttons_right_open == False:
@@ -1038,9 +1037,23 @@ class App:
         self.menu.add_cascade(label='🤼 Competition', command= lambda: self.competition())
 
         self.menu.add_cascade(label='❓ Help', menu=help_menu)
+        help_menu.add_command(label="Button Info", command=lambda: self.button_info())
         help_menu.add_cascade(label="Voice", menu= self.v_sub_menu)
         self.v_sub_menu.add_command(label="Voice Commands", command= lambda: self.help_voice_commands())
         self.v_sub_menu.add_command(label="What are voice commands?", command= lambda: self.help_voice_info())
+
+    def button_info(self):
+        if self.button_info_open == False:
+            self.button_info_open = True
+            self.BIF = Toplevel(self.WIN)
+            self.BIF.attributes('-topmost', True)
+            self.BIF.title("Voice Commands")
+            self.BIF.resizable(False, False)
+            self.update_window_position()
+            button = Button(self.BIF, image=self.photo_info, width=1000, height=500)
+            button.grid(row=0, column=0)
+            
+            self.BIF.protocol('WM_DELETE_WINDOW', self.bif_close)
 
     def help_voice_commands(self):
         if self.voice_commands_open == False:
@@ -1146,6 +1159,12 @@ class App:
             label.grid(row=13, column=0, sticky='w')
             label = Label(self.VCI, text="reactivated from the <Tools> menu.", anchor='w', justify='left')
             label.grid(row=14, column=0, sticky='w')
+            label = Label(self.VCI, text="When are Voice Commands Registered?")
+            label.grid(row=15, column=0)
+            label = Label(self.VCI, text="Voice commands register whenever the light to the right of the", anchor='w', justify='left')
+            label.grid(row=16, column=0, sticky='w')
+            label = Label(self.VCI, text="zoom in button turns <Green>", anchor='w', justify='left')
+            label.grid(row=17, column=0, sticky='w')
             
             self.VCI.protocol('WM_DELETE_WINDOW', self.vcm_close)
 
@@ -1177,8 +1196,15 @@ class App:
             self.VCM.destroy()
         else:
             self.VCI.destroy()
+    
+    def bif_close(self):
+        self.button_info_open = False
+        if self.BIF:
+            self.BIF.destroy()
+        else:
+            self.BIF.destroy()
 
-    def update_window_position(self):
+    def update_window_position(self): # Schimba pozitia windowurilor descise (relativ fata de WIN)
         x = self.WIN.winfo_x()
         y = self.WIN.winfo_y()
         try:
@@ -1193,6 +1219,8 @@ class App:
                 self.VCM.geometry(f"+{x + 640 }+{y + 120}")
             if self.VCI != None:
                 self.VCI.geometry(f"+{x + 640 }+{y + 120}")
+            if self.BIF != None:
+                self.BIF.geometry(f"+{x + 270 }+{y + 120}")
         except TclError as e:
             pass
 
@@ -1205,7 +1233,7 @@ class App:
         competition = Competition(CON)
         CON.mainloop()
 
-    def on_closing(self):
+    def on_closing(self): 
         if self.closing == False:
             self.CLS = Toplevel(self.WIN)
             self.CLS.attributes('-topmost', True)
@@ -1247,7 +1275,9 @@ class App:
                     with self.microphone as source:
                         self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
                         try:
+                            self.CVS_V.config(bg="green")
                             audio = self.recognizer.listen(source, timeout=3, phrase_time_limit=3)
+                            self.CVS_V.config(bg="red")
                             text = self.recognizer.recognize_google(audio)
                             self.handle_voice_input(text)
                         except sr.WaitTimeoutError:
@@ -1329,6 +1359,7 @@ class App:
             self.voice = False
             self.stop_recognition_thread()
             print("Voice Disabled")
+
 class Competition:
     def __init__(self, root):
         self.COM = root
@@ -1413,7 +1444,6 @@ class Competition:
 
 app : App = App()
 #Eventuri
-
 
 app.compare_colors()
 

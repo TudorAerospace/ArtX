@@ -1,7 +1,7 @@
 ArtX cu Voice Recognition:
 https://drive.google.com/file/d/1dwohVr_8jhWLkL_G-oqMyk2vipNIpZVZ/view?usp=sharing
 
-Surse & Documentatie
+Surse & Documentatie:
 https://www.geeksforgeeks.org/python-gui-tkinter/ 
 https://docs.python.org/3/library/tkinter.html 
 https://pillow.readthedocs.io/en/stable/ 
